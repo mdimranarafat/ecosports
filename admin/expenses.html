@@ -5,9 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Expenses — Eco Sports Admin</title>
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Work+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/css/global.css" />
-<link rel="stylesheet" href="/assets/css/admin.css" />
-<link rel="stylesheet" href="/assets/css/responsive.css" />
+<link rel="stylesheet" href="../assets/css/global.css" />
+<link rel="stylesheet" href="../assets/css/admin.css" />
+<link rel="stylesheet" href="../assets/css/responsive.css" />
 </head>
 <body>
 <div class="es-admin-shell" id="es-admin-shell">
@@ -68,10 +68,10 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
 <script type="module">
-  import { initAdminLayout, showToast } from "/assets/js/admin-layout.js";
-  import { addExpense, deleteExpense, listExpenses, sumExpenses, expensesByCategory, DEFAULT_CATEGORIES } from "/assets/js/expense-manager.js";
-  import { getAllFacilities } from "/assets/js/facility-manager.js";
-  import { formatCurrency, todayISO, addDaysISO } from "/assets/js/utils.js";
+  import { initAdminLayout, showToast } from "../assets/js/admin-layout.js";
+  import { addExpense, deleteExpense, listExpenses, sumExpenses, expensesByCategory, DEFAULT_CATEGORIES } from "../assets/js/expense-manager.js";
+  import { getAllFacilities } from "../assets/js/facility-manager.js";
+  import { formatCurrency, todayISO, addDaysISO } from "../assets/js/utils.js";
 
   await initAdminLayout({ activePage: "expenses", permission: "expenses.manage" });
 
