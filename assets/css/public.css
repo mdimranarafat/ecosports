@@ -1,0 +1,213 @@
+/* ============================================================================
+   ECO SPORTS — Public website styles. Built on top of global.css tokens.
+   ============================================================================ */
+
+/* Header ------------------------------------------------------------------ */
+
+.es-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: rgba(20, 38, 28, 0.92);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--es-line);
+}
+
+.es-header__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--es-space-3) 0;
+}
+
+.es-logo {
+  font-family: var(--es-font-display);
+  font-size: 1.4rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--es-white);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.es-logo span { color: var(--es-amber); }
+
+.es-nav { display: flex; align-items: center; gap: var(--es-space-4); }
+.es-nav a {
+  color: var(--es-chalk);
+  font-family: var(--es-font-display);
+  text-transform: uppercase;
+  font-size: 0.85rem;
+  letter-spacing: 0.04em;
+}
+.es-nav a:hover, .es-nav a.is-active { color: var(--es-amber); }
+
+.es-nav__toggle { display: none; background: none; border: none; color: var(--es-white); font-size: 1.6rem; cursor: pointer; }
+
+/* Hero ---------------------------------------------------------------------- */
+
+.es-hero {
+  position: relative;
+  min-height: 82vh;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, rgba(20, 38, 28, 0.55) 0%, rgba(20, 38, 28, 0.94) 100%),
+    radial-gradient(ellipse at 70% 20%, rgba(242, 184, 75, 0.15), transparent 55%),
+    var(--es-night);
+}
+
+.es-hero::before {
+  /* Floodlight beam accents — pure CSS, no image dependency, sports-arena feel. */
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    repeating-linear-gradient(100deg, transparent 0 120px, rgba(255,255,255,0.02) 120px 122px),
+    repeating-linear-gradient(0deg, transparent 0 40px, rgba(255,255,255,0.015) 40px 41px);
+  pointer-events: none;
+}
+
+.es-hero__content { position: relative; max-width: 720px; }
+
+.es-hero__cta { display: flex; gap: var(--es-space-3); flex-wrap: wrap; margin-top: var(--es-space-4); }
+
+.es-hero__stats { display: flex; gap: var(--es-space-5); margin-top: var(--es-space-6); }
+.es-hero__stat-num { font-family: var(--es-font-mono); font-size: 2.2rem; color: var(--es-amber); display: block; }
+.es-hero__stat-label { font-size: 0.8rem; color: var(--es-moss); text-transform: uppercase; letter-spacing: 0.08em; }
+
+/* Quick booking widget ------------------------------------------------------ */
+
+.es-quickbook {
+  position: relative;
+  margin-top: -64px;
+  z-index: 5;
+}
+
+.es-quickbook__card {
+  background: var(--es-pitch);
+  border: 1px solid var(--es-line);
+  border-radius: var(--es-radius-lg);
+  padding: var(--es-space-4);
+  box-shadow: 0 24px 60px -20px rgba(0,0,0,0.55);
+  display: grid;
+  grid-template-columns: repeat(4, 1fr) auto;
+  gap: var(--es-space-3);
+  align-items: end;
+}
+
+.es-slot-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: var(--es-space-2);
+  margin-top: var(--es-space-3);
+}
+
+.es-slot {
+  font-family: var(--es-font-mono);
+  text-align: center;
+  padding: 10px 6px;
+  border-radius: var(--es-radius-sm);
+  border: 1.5px solid var(--es-line);
+  background: var(--es-night);
+  color: var(--es-chalk);
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+.es-slot:hover { border-color: var(--es-amber); }
+.es-slot.is-selected { background: var(--es-amber); color: #201400; border-color: var(--es-amber); font-weight: 600; }
+.es-slot.is-unavailable { opacity: 0.35; cursor: not-allowed; text-decoration: line-through; }
+
+/* Section shell ------------------------------------------------------------- */
+
+.es-section { padding: var(--es-space-7) 0; }
+.es-section--alt { background: var(--es-pitch); border-top: 1px solid var(--es-line); border-bottom: 1px solid var(--es-line); }
+.es-section__head { max-width: 640px; margin-bottom: var(--es-space-5); }
+
+/* Facility cards -------------------------------------------------------------- */
+
+.es-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--es-space-4);
+}
+
+.es-facility-card {
+  background: var(--es-pitch);
+  border: 1px solid var(--es-line);
+  border-radius: var(--es-radius-lg);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: transform 160ms ease, border-color 160ms ease;
+}
+.es-facility-card:hover { transform: translateY(-4px); border-color: var(--es-amber-dim); }
+
+.es-facility-card__media {
+  aspect-ratio: 16/10;
+  background: var(--es-pitch-2) center/cover no-repeat;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 2.4rem;
+  color: var(--es-amber);
+}
+
+.es-facility-card__body { padding: var(--es-space-4); display: flex; flex-direction: column; gap: var(--es-space-2); flex: 1; }
+.es-facility-card__meta { display: flex; gap: var(--es-space-3); font-family: var(--es-font-mono); font-size: 0.78rem; color: var(--es-moss); }
+.es-facility-card__footer { margin-top: auto; display: flex; justify-content: space-between; align-items: center; }
+.es-price-tag { font-family: var(--es-font-mono); color: var(--es-amber); font-size: 1.1rem; }
+
+/* Offer banners --------------------------------------------------------------- */
+
+.es-offer-card {
+  background: linear-gradient(135deg, var(--es-pitch-2), var(--es-pitch));
+  border: 1px solid var(--es-amber-dim);
+  border-radius: var(--es-radius-lg);
+  padding: var(--es-space-4);
+  position: relative;
+}
+.es-offer-card__badge {
+  position: absolute; top: 16px; right: 16px;
+  background: var(--es-amber); color: #201400;
+  font-family: var(--es-font-mono); font-size: 0.8rem;
+  padding: 4px 10px; border-radius: 999px; font-weight: 700;
+}
+
+/* Steps (how it works) --------------------------------------------------------- */
+
+.es-steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--es-space-4); counter-reset: es-step; }
+.es-step { position: relative; padding-left: 56px; }
+.es-step::before {
+  counter-increment: es-step;
+  content: counter(es-step);
+  position: absolute; left: 0; top: 0;
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  border: 1.5px solid var(--es-amber);
+  color: var(--es-amber);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--es-font-mono); font-weight: 700;
+}
+
+/* Footer ------------------------------------------------------------------------ */
+
+.es-footer { border-top: 1px solid var(--es-line); padding: var(--es-space-6) 0 var(--es-space-4); }
+.es-footer__grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: var(--es-space-5); }
+.es-footer__bottom { margin-top: var(--es-space-5); padding-top: var(--es-space-3); border-top: 1px solid var(--es-line); font-size: 0.8rem; color: var(--es-moss); display: flex; justify-content: space-between; }
+
+/* Booking page / summary panel --------------------------------------------------- */
+
+.es-booking-layout { display: grid; grid-template-columns: 1.4fr 1fr; gap: var(--es-space-5); align-items: start; }
+.es-summary-panel { position: sticky; top: 96px; }
+.es-summary-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px dashed var(--es-line); font-size: 0.92rem; }
+.es-summary-row:last-of-type { border-bottom: none; }
+.es-summary-row--total { font-family: var(--es-font-mono); font-size: 1.3rem; color: var(--es-amber); border-top: 1.5px solid var(--es-line); padding-top: var(--es-space-3); margin-top: var(--es-space-2); }
+
+.es-status-pill {
+  display: inline-block; padding: 3px 10px; border-radius: 999px;
+  font-family: var(--es-font-mono); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em;
+}
+.es-status-pill--pending { background: rgba(230,168,23,0.18); color: #e6a817; }
+.es-status-pill--confirmed, .es-status-pill--approved { background: rgba(47,124,214,0.18); color: #6ea8ec; }
+.es-status-pill--completed { background: rgba(31,138,95,0.2); color: var(--es-lime); }
+.es-status-pill--cancelled, .es-status-pill--rejected, .es-status-pill--no_show { background: rgba(214,69,69,0.18); color: #f08b7b; }

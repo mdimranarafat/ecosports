@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Customers — Eco Sports Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Work+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/global.css" />
+<link rel="stylesheet" href="/assets/css/admin.css" />
+<link rel="stylesheet" href="/assets/css/responsive.css" />
+</head>
+<body>
+<div class="es-admin-shell" id="es-admin-shell">
+  <div style="width:100%;">
+    <div class="es-topbar">
+      <h1 class="es-topbar__title">Customers</h1>
+      <div class="es-topbar__actions"><button class="es-btn es-btn--primary" id="export-btn" style="padding:10px 18px;font-size:0.85rem;">⇩ Export CSV</button></div>
+    </div>
+
+    <div class="es-filterbar">
+      <input class="es-input" id="search-input" placeholder="Search by name, phone, or email…" style="min-width:260px;" />
+    </div>
+
+    <div class="es-table-wrap">
+      <table class="es-table">
+        <thead><tr><th>Name</th><th>Phone</th><th>Email</th><th>Bookings</th><th>Completed</th><th>Cancelled</th><th>Total Spend</th><th>Due</th><th>Last Booking</th><th></th></tr></thead>
+        <tbody id="customers-body"><tr><td colspan="10">Loading…</td></tr></tbody>
+      </table>
+      <div class="es-pagination"><span id="row-count"></span></div>
+    </div>
+  </div>
+</div>
+
+<div class="es-modal-backdrop" id="profile-modal" style="display:none;">
+  <div class="es-modal">
+    <div class="es-modal__head"><h3 id="profile-name" style="margin:0;">Customer</h3><button class="es-modal__close" id="profile-close">&times;</button></div>
+    <div id="profile-meta" class="es-mono" style="color:var(--es-moss);font-size:0.85rem;margin-bottom:var(--es-space-3);"></div>
+    <div class="es-field"><label class="es-label">Notes</label><textarea class="es-input" id="profile-notes" rows="3"></textarea></div>
+    <button class="es-btn es-btn--primary es-btn--block" id="save-notes-btn">Save Notes</button>
+    <h4 style="margin-top:var(--es-space-4);">Booking History</h4>
+    <div class="es-table-wrap" style="max-height:280px;overflow-y:auto;">
+      <table class="es-table">
+        <thead><tr><th>Date</th><th>Facility</th><th>Status</th><th>Final Price</th></tr></thead>
+        <tbody id="profile-history"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import { initAdminLayout, showToast } from "/assets/js/admin-layout.js";
+  import { listRecentCustomers, searchCustomers, getCustomerBookingHistory, updateCustomerNotes } from "/assets/js/customer-manager.js";
+  import { exportCustomersCsv } from "/assets/js/csv-export.js";
+  import { formatCurrency, debounce } from "/assets/js/utils.js";
+  import { getFacility } from "/assets/js/facility-manager.js";
+
+  await initAdminLayout({ activePage: "customers", permission: "customers.view" });
+
+  let activeCustomerId = null;
+
+  function row(c) {
+    return `<tr>
+      <td data-label="Name"><a href="#" class="view-profile" data-id="${c.id}" data-phone="${c.phone}" style="color:var(--es-lime);">${c.name || "—"}</a></td>
+      <td data-label="Phone">${c.phone || "—"}</td>
+      <td data-label="Email">${c.email || "—"}</td>
+      <td data-label="Bookings">${c.totalBookings || 0}</td>
+      <td data-label="Completed">${c.completedBookings || 0}</td>
+      <td data-label="Cancelled">${c.cancelledBookings || 0}</td>
+      <td data-label="Total Spend">${formatCurrency(c.totalSpending || 0)}</td>
+      <td data-label="Due">${formatCurrency(c.outstandingDue || 0)}</td>
+      <td data-label="Last Booking">${c.lastBookingAt?.toDate ? c.lastBookingAt.toDate().toLocaleDateString() : "—"}</td>
+      <td><button class="es-btn es-btn--sm view-profile" data-id="${c.id}" data-phone="${c.phone}">View</button></td>
+    </tr>`;
+  }
+
+  function renderRows(rows) {
+    const body = document.getElementById("customers-body");
+    body.innerHTML = rows.length ? rows.map(row).join("") : `<tr><td colspan="10">No customers found.</td></tr>`;
+    document.getElementById("row-count").textContent = `${rows.length} customer${rows.length === 1 ? "" : "s"}`;
+    body.querySelectorAll(".view-profile").forEach((el) => el.addEventListener("click", (e) => { e.preventDefault(); openProfile(el.dataset.id, el.dataset.phone); }));
+  }
+
+  async function loadDefault() {
+    renderRows(await listRecentCustomers(100));
+  }
+
+  const doSearch = debounce(async (term) => {
+    if (!term) return loadDefault();
+    renderRows(await searchCustomers(term));
+  }, 300);
+
+  document.getElementById("search-input").addEventListener("input", (e) => doSearch(e.target.value));
+
+  async function openProfile(customerId, phone) {
+    activeCustomerId = customerId;
+    const modal = document.getElementById("profile-modal");
+    modal.style.display = "flex";
+    document.getElementById("profile-name").textContent = "Loading…";
+    const [history] = await Promise.all([getCustomerBookingHistory(phone)]);
+    const c = (await listRecentCustomers(500)).find((x) => x.id === customerId);
+    document.getElementById("profile-name").textContent = c?.name || "Customer";
+    document.getElementById("profile-meta").textContent = `${c?.phone || ""} · ${c?.email || "no email"} · First booking: ${c?.firstBookingAt?.toDate ? c.firstBookingAt.toDate().toLocaleDateString() : "—"}`;
+    document.getElementById("profile-notes").value = c?.notes || "";
+    document.getElementById("profile-history").innerHTML = history.length
+      ? history.map((b) => `<tr><td>${b.date}</td><td>${b.facilityName || b.facilityId}</td><td>${b.status}</td><td>${formatCurrency(b.finalPrice || 0)}</td></tr>`).join("")
+      : `<tr><td colspan="4">No bookings yet.</td></tr>`;
+  }
+
+  document.getElementById("profile-close").addEventListener("click", () => (document.getElementById("profile-modal").style.display = "none"));
+
+  document.getElementById("save-notes-btn").addEventListener("click", async () => {
+    await updateCustomerNotes(activeCustomerId, document.getElementById("profile-notes").value);
+    showToast("Notes saved");
+  });
+
+  document.getElementById("export-btn").addEventListener("click", async () => {
+    await exportCustomersCsv();
+    showToast("Customers CSV downloaded");
+  });
+
+  await loadDefault();
+</script>
+</body>
+</html>

@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta http-equiv="refresh" content="0; url=/admin/dashboard.html" />
+<title>Eco Sports Admin</title>
+<script type="module">
+  // requireAuth() in dashboard.html will redirect to /login.html if the
+  // user isn't signed in, so this simple router is safe as the landing page
+  // and as the target for "forbidden" redirects from admin-layout.js.
+  window.location.replace("/admin/dashboard.html");
+</script>
+</head>
+<body>
+  <p>Redirecting to the dashboard…</p>
+</body>
+</html>

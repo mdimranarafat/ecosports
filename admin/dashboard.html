@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Dashboard — Eco Sports Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Work+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/global.css" />
+<link rel="stylesheet" href="/assets/css/admin.css" />
+<link rel="stylesheet" href="/assets/css/responsive.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+</head>
+<body>
+<div class="es-admin-shell" id="es-admin-shell">
+  <div class="es-topbar__title-wrap" style="width:100%;">
+    <div class="es-topbar">
+      <h1 class="es-topbar__title">Dashboard</h1>
+      <div class="es-topbar__actions">
+        <span id="today-label" class="es-mono" style="color:var(--es-moss);font-size:0.85rem;"></span>
+      </div>
+    </div>
+
+    <div class="es-metrics-grid" id="metrics-grid">
+      <div class="es-metric-card"><div class="es-skeleton" style="height:60px;"></div></div>
+      <div class="es-metric-card"><div class="es-skeleton" style="height:60px;"></div></div>
+      <div class="es-metric-card"><div class="es-skeleton" style="height:60px;"></div></div>
+      <div class="es-metric-card"><div class="es-skeleton" style="height:60px;"></div></div>
+    </div>
+
+    <div class="es-metrics-grid">
+      <div class="es-metric-card">
+        <div class="es-metric-card__label">Revenue Today vs Yesterday</div>
+        <div class="es-metric-card__value" id="growth-today">—</div>
+        <div class="es-metric-card__delta" id="growth-today-delta"></div>
+      </div>
+      <div class="es-metric-card">
+        <div class="es-metric-card__label">This Week vs Last Week</div>
+        <div class="es-metric-card__value" id="growth-week">—</div>
+        <div class="es-metric-card__delta" id="growth-week-delta"></div>
+      </div>
+      <div class="es-metric-card">
+        <div class="es-metric-card__label">This Month vs Last Month</div>
+        <div class="es-metric-card__value" id="growth-month">—</div>
+        <div class="es-metric-card__delta" id="growth-month-delta"></div>
+      </div>
+      <div class="es-metric-card">
+        <div class="es-metric-card__label">Most Booked Facility</div>
+        <div class="es-metric-card__value" style="font-size:1.3rem;" id="most-booked">—</div>
+      </div>
+    </div>
+
+    <div class="es-charts-grid">
+      <div class="es-panel">
+        <div class="es-panel__head"><h3>Revenue — Last 7 Days</h3></div>
+        <canvas id="chart-revenue" height="110"></canvas>
+      </div>
+      <div class="es-panel">
+        <div class="es-panel__head"><h3>Today's Bookings</h3></div>
+        <canvas id="chart-status" height="110"></canvas>
+      </div>
+    </div>
+
+    <div class="es-panel">
+      <div class="es-panel__head"><h3>Facility Performance (30 Days)</h3></div>
+      <canvas id="chart-facility" height="90"></canvas>
+    </div>
+
+    <div class="es-panel">
+      <div class="es-panel__head"><h3>Facility Performance — Details</h3></div>
+      <div class="es-table-wrap">
+        <table class="es-table">
+          <thead><tr><th>Facility</th><th>Bookings</th><th>Revenue</th><th>Avg Duration</th><th>Utilization</th><th>Peak Hour</th></tr></thead>
+          <tbody id="facility-table-body"><tr><td colspan="6">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import { initAdminLayout } from "/assets/js/admin-layout.js";
+  import { loadDashboardData, renderRevenueLineChart, renderFacilityBarChart, renderBookingStatusDonut } from "/assets/js/dashboard.js";
+
+  await initAdminLayout({ activePage: "dashboard", permission: "dashboard.view" });
+
+  document.getElementById("today-label").textContent = new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+
+  function deltaHTML(pct) {
+    const up = pct >= 0;
+    return `<span class="${up ? "is-up" : "is-down"}">${up ? "▲" : "▼"} ${Math.abs(pct).toFixed(1)}%</span>`;
+  }
+
+  const data = await loadDashboardData();
+
+  document.getElementById("metrics-grid").innerHTML = `
+    <div class="es-metric-card"><div class="es-metric-card__label">Today's Bookings</div><div class="es-metric-card__value">${data.today.totalBookings}</div></div>
+    <div class="es-metric-card"><div class="es-metric-card__label">Pending Approval</div><div class="es-metric-card__value">${data.today.pendingBookings}</div></div>
+    <div class="es-metric-card"><div class="es-metric-card__label">Today's Revenue</div><div class="es-metric-card__value">${data.today.revenue.toLocaleString()} BDT</div></div>
+    <div class="es-metric-card"><div class="es-metric-card__label">Today's Profit</div><div class="es-metric-card__value">${data.today.profit.toLocaleString()} BDT</div></div>`;
+
+  document.getElementById("growth-today").textContent = `${data.today.revenue.toLocaleString()} BDT`;
+  document.getElementById("growth-today-delta").innerHTML = deltaHTML(data.growth.today.changePct);
+  document.getElementById("growth-week").textContent = `${data.growth.week.value.toLocaleString()} BDT`;
+  document.getElementById("growth-week-delta").innerHTML = deltaHTML(data.growth.week.changePct);
+  document.getElementById("growth-month").textContent = `${data.growth.month.value.toLocaleString()} BDT`;
+  document.getElementById("growth-month-delta").innerHTML = deltaHTML(data.growth.month.changePct);
+  document.getElementById("most-booked").textContent = data.mostBookedFacility?.name || "—";
+
+  renderRevenueLineChart("chart-revenue", data.weekRevenueSeries);
+  renderBookingStatusDonut("chart-status", data.today);
+  renderFacilityBarChart("chart-facility", data.facilityPerf);
+
+  document.getElementById("facility-table-body").innerHTML =
+    data.facilityPerf.length === 0
+      ? `<tr><td colspan="6">No facility activity in the last 30 days.</td></tr>`
+      : data.facilityPerf
+          .map(
+            (f) => `<tr>
+              <td data-label="Facility">${f.name}</td>
+              <td data-label="Bookings">${f.bookings}</td>
+              <td data-label="Revenue">${f.revenue.toLocaleString()} BDT</td>
+              <td data-label="Avg Duration">${f.avgDurationMinutes} min</td>
+              <td data-label="Utilization">${f.utilizationPct.toFixed(1)}%</td>
+              <td data-label="Peak Hour">${f.peakHour}</td>
+            </tr>`
+          )
+          .join("");
+</script>
+</body>
+</html>

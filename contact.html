@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Contact — Eco Sports</title>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Work+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/global.css" />
+<link rel="stylesheet" href="/assets/css/public.css" />
+<link rel="stylesheet" href="/assets/css/responsive.css" />
+</head>
+<body data-page="contact">
+<div id="es-header-slot"></div>
+
+<section class="es-section" style="padding-top:var(--es-space-6);">
+  <div class="es-container es-grid" style="grid-template-columns:1fr 1fr;">
+    <div>
+      <div class="es-eyebrow">Get In Touch</div>
+      <h1>Questions? We're Here.</h1>
+      <p style="max-width:440px;">For bookings, use the online system for instant confirmation. For anything else — corporate rates, facility hire, feedback — reach us below.</p>
+      <div class="es-card es-mt-4">
+        <p style="margin:0 0 10px;"><strong>Phone:</strong> <span id="contact-phone" class="es-mono">Loading…</span></p>
+        <p style="margin:0 0 10px;"><strong>Email:</strong> <span id="contact-email" class="es-mono">Loading…</span></p>
+        <p style="margin:0;"><strong>Address:</strong> <span id="contact-address">Chattogram, Bangladesh</span></p>
+      </div>
+    </div>
+    <div class="es-card">
+      <h3 style="margin-top:0;">Send a Message</h3>
+      <form id="contact-form">
+        <div class="es-field"><label class="es-label">Name</label><input class="es-input" id="c-name" required /></div>
+        <div class="es-field"><label class="es-label">Phone</label><input class="es-input" id="c-phone" required /></div>
+        <div class="es-field"><label class="es-label">Message</label><textarea class="es-input" id="c-message" rows="4" required></textarea></div>
+        <button class="es-btn es-btn--primary es-btn--block" type="submit">Send Message</button>
+      </form>
+    </div>
+  </div>
+</section>
+
+<div id="es-footer-slot"></div>
+<div class="es-toast" id="toast"></div>
+
+<script type="module">
+  import { initLayout } from "/assets/js/layout.js";
+  import { db } from "/assets/js/firebase-config.js";
+  import { doc, getDoc, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+  initLayout();
+
+  getDoc(doc(db, "settings", "business")).then((snap) => {
+    if (!snap.exists()) return;
+    const s = snap.data();
+    document.getElementById("contact-phone").textContent = s.phone || "—";
+    document.getElementById("contact-email").textContent = s.email || "—";
+    document.getElementById("contact-address").textContent = s.address || "Chattogram, Bangladesh";
+  }).catch(() => {});
+
+  function showToast(msg, kind = "success") {
+    const t = document.getElementById("toast");
+    t.textContent = msg;
+    t.className = `es-toast es-toast--show es-toast--${kind}`;
+    setTimeout(() => (t.className = "es-toast"), 3200);
+  }
+
+  document.getElementById("contact-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    // Stored as a lightweight "contactMessages" doc — public create-only,
+    // see firestore.rules. Not part of the 26-collection core schema since
+    // it isn't operational data, but kept in Firestore (no Storage) per spec.
+    try {
+      await addDoc(collection(db, "contactMessages"), {
+        name: document.getElementById("c-name").value.trim(),
+        phone: document.getElementById("c-phone").value.trim(),
+        message: document.getElementById("c-message").value.trim(),
+        createdAt: serverTimestamp(),
+        status: "new",
+      });
+      showToast("Message sent — we'll get back to you soon.");
+      e.target.reset();
+    } catch (err) {
+      showToast("Could not send message. Please try again.", "error");
+    }
+  });
+</script>
+</body>
+</html>

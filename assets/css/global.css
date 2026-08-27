@@ -1,0 +1,226 @@
+/* ============================================================================
+   ECO SPORTS — Design tokens
+   Concept: a floodlit night pitch in Chattogram — deep turf-green dark mode,
+   warm sodium-floodlight amber as the single accent, scoreboard-mono digits
+   for times and prices, jersey-condensed display type for headlines.
+   ============================================================================ */
+
+:root {
+  /* Color */
+  --es-night: #14261c;          /* page background — turf at night, not pure black */
+  --es-pitch: #1e3a29;          /* card / panel surface */
+  --es-pitch-2: #24462f;        /* raised surface / hover */
+  --es-line: #345c42;           /* hairline / chalk-line dividers */
+  --es-chalk: #edefe7;          /* primary text on dark */
+  --es-moss: #9ab6a3;           /* secondary / muted text */
+  --es-amber: #f2b84b;          /* floodlight accent — CTAs, active states */
+  --es-amber-dim: #c8963a;
+  --es-lime: #8fd14f;           /* functional "available" green — used sparingly */
+  --es-red: #e2664f;            /* functional "unavailable/error" */
+  --es-white: #ffffff;
+
+  /* Type */
+  --es-font-display: "Oswald", "Archivo Narrow", sans-serif;
+  --es-font-body: "Work Sans", "Inter", sans-serif;
+  --es-font-mono: "IBM Plex Mono", "Roboto Mono", monospace;
+
+  /* Scale */
+  --es-radius-sm: 6px;
+  --es-radius-md: 10px;
+  --es-radius-lg: 16px;
+  --es-space-1: 4px;
+  --es-space-2: 8px;
+  --es-space-3: 16px;
+  --es-space-4: 24px;
+  --es-space-5: 40px;
+  --es-space-6: 64px;
+  --es-space-7: 96px;
+  --es-max-width: 1200px;
+}
+
+@font-face {
+  font-family: "Oswald";
+  src: local("Oswald");
+  font-display: swap;
+}
+
+* { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  margin: 0;
+  background: var(--es-night);
+  color: var(--es-chalk);
+  font-family: var(--es-font-body);
+  font-size: 16px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4 {
+  font-family: var(--es-font-display);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  margin: 0 0 var(--es-space-2);
+  color: var(--es-white);
+}
+
+h1 { font-size: clamp(2.4rem, 6vw, 4.2rem); line-height: 1.02; letter-spacing: 0.01em; }
+h2 { font-size: clamp(1.8rem, 4vw, 2.6rem); }
+h3 { font-size: 1.3rem; }
+
+p { margin: 0 0 var(--es-space-3); color: var(--es-moss); }
+
+a { color: var(--es-amber); text-decoration: none; }
+a:hover { color: var(--es-white); }
+
+.es-mono { font-family: var(--es-font-mono); font-variant-numeric: tabular-nums; }
+
+.es-container {
+  max-width: var(--es-max-width);
+  margin: 0 auto;
+  padding: 0 var(--es-space-4);
+}
+
+.es-eyebrow {
+  font-family: var(--es-font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--es-amber);
+  display: flex;
+  align-items: center;
+  gap: var(--es-space-2);
+  margin-bottom: var(--es-space-2);
+}
+
+.es-eyebrow::before {
+  content: "";
+  width: 24px;
+  height: 2px;
+  background: var(--es-amber);
+  display: inline-block;
+}
+
+/* Buttons ------------------------------------------------------------- */
+
+.es-btn {
+  font-family: var(--es-font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 0.95rem;
+  border: none;
+  border-radius: var(--es-radius-sm);
+  padding: 14px 28px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--es-space-2);
+  transition: transform 120ms ease, background 120ms ease, box-shadow 120ms ease;
+}
+
+.es-btn:focus-visible {
+  outline: 3px solid var(--es-amber);
+  outline-offset: 2px;
+}
+
+.es-btn--primary {
+  background: var(--es-amber);
+  color: #201400;
+  box-shadow: 0 0 0 1px rgba(242, 184, 75, 0.35), 0 8px 24px -8px rgba(242, 184, 75, 0.55);
+}
+.es-btn--primary:hover { background: var(--es-white); transform: translateY(-1px); }
+
+.es-btn--ghost {
+  background: transparent;
+  color: var(--es-chalk);
+  border: 1.5px solid var(--es-line);
+}
+.es-btn--ghost:hover { border-color: var(--es-amber); color: var(--es-amber); }
+
+.es-btn--block { width: 100%; }
+.es-btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+
+/* Cards ----------------------------------------------------------------- */
+
+.es-card {
+  background: var(--es-pitch);
+  border: 1px solid var(--es-line);
+  border-radius: var(--es-radius-lg);
+  padding: var(--es-space-4);
+}
+
+/* Forms ------------------------------------------------------------------ */
+
+.es-field { margin-bottom: var(--es-space-3); }
+
+.es-label {
+  display: block;
+  font-family: var(--es-font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--es-moss);
+  margin-bottom: var(--es-space-1);
+}
+
+.es-input, .es-select, textarea.es-input {
+  width: 100%;
+  background: var(--es-night);
+  border: 1.5px solid var(--es-line);
+  border-radius: var(--es-radius-sm);
+  padding: 12px 14px;
+  color: var(--es-chalk);
+  font-family: var(--es-font-body);
+  font-size: 1rem;
+}
+
+.es-input:focus, .es-select:focus {
+  outline: none;
+  border-color: var(--es-amber);
+  box-shadow: 0 0 0 3px rgba(242, 184, 75, 0.18);
+}
+
+.es-input::placeholder { color: var(--es-moss); opacity: 0.7; }
+
+/* Chalk-line divider ------------------------------------------------------ */
+
+.es-divider {
+  border: none;
+  border-top: 1px dashed var(--es-line);
+  margin: var(--es-space-5) 0;
+}
+
+/* Toasts ------------------------------------------------------------------ */
+
+.es-toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: var(--es-pitch-2);
+  border: 1px solid var(--es-line);
+  color: var(--es-chalk);
+  padding: 12px 20px;
+  border-radius: var(--es-radius-md);
+  font-size: 0.9rem;
+  opacity: 0;
+  transition: opacity 200ms ease, transform 200ms ease;
+  z-index: 1000;
+  max-width: 90vw;
+}
+.es-toast--show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.es-toast--error { border-color: var(--es-red); }
+.es-toast--success { border-color: var(--es-lime); }
+
+/* Utility ------------------------------------------------------------------ */
+
+.es-text-center { text-align: center; }
+.es-flex { display: flex; }
+.es-gap-2 { gap: var(--es-space-2); }
+.es-gap-3 { gap: var(--es-space-3); }
+.es-mt-4 { margin-top: var(--es-space-4); }
+.es-mb-4 { margin-bottom: var(--es-space-4); }

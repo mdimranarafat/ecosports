@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Bookings — Eco Sports Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Work+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/global.css" />
+<link rel="stylesheet" href="/assets/css/admin.css" />
+<link rel="stylesheet" href="/assets/css/responsive.css" />
+</head>
+<body>
+<div class="es-admin-shell" id="es-admin-shell">
+  <div style="width:100%;">
+    <div class="es-topbar">
+      <h1 class="es-topbar__title">Bookings</h1>
+      <div class="es-topbar__actions">
+        <button class="es-btn es-btn--primary" id="new-booking-btn" style="padding:10px 18px;font-size:0.85rem;">+ New Booking</button>
+      </div>
+    </div>
+
+    <div class="es-filterbar">
+      <input class="es-input es-search" id="f-search" placeholder="Search customer name or phone…" />
+      <input class="es-input" type="date" id="f-date" />
+      <select class="es-select" id="f-facility"><option value="">All Facilities</option></select>
+      <select class="es-select" id="f-status">
+        <option value="">All Statuses</option>
+        <option>pending</option><option>approved</option><option>confirmed</option>
+        <option>completed</option><option>cancelled</option><option>rejected</option><option>no_show</option>
+      </select>
+      <select class="es-select" id="f-payment">
+        <option value="">All Payments</option>
+        <option>unpaid</option><option>partial</option><option>paid</option><option>refunded</option>
+      </select>
+      <button class="es-btn es-btn--ghost" id="f-clear" style="padding:10px 16px;font-size:0.85rem;">Clear</button>
+    </div>
+
+    <div class="es-table-wrap">
+      <table class="es-table">
+        <thead><tr><th>Booking ID</th><th>Customer</th><th>Facility</th><th>Date / Time</th><th>Status</th><th>Payment</th><th>Total</th><th>Actions</th></tr></thead>
+        <tbody id="bookings-body"><tr><td colspan="8">Loading…</td></tr></tbody>
+      </table>
+      <div class="es-pagination">
+        <span id="pagination-label"></span>
+        <div class="es-flex es-gap-2">
+          <button class="es-btn es-btn--ghost" id="prev-page" style="padding:6px 14px;font-size:0.8rem;">Prev</button>
+          <button class="es-btn es-btn--ghost" id="next-page" style="padding:6px 14px;font-size:0.8rem;">Next</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- New / Edit Booking Modal -->
+<div class="es-modal-backdrop" id="booking-modal" style="display:none;">
+  <div class="es-modal">
+    <div class="es-modal__head"><h3 id="modal-title" style="margin:0;">New Booking</h3><button class="es-modal__close" id="modal-close">&times;</button></div>
+
+    <div class="es-field">
+      <label class="es-label">Booking Type</label>
+      <select class="es-select" id="m-type"><option value="single">Single Booking</option><option value="recurring">Recurring / Corporate</option></select>
+    </div>
+
+    <div class="es-flex es-gap-3">
+      <div class="es-field" style="flex:1;"><label class="es-label">Customer Name *</label><input class="es-input" id="m-name" /></div>
+      <div class="es-field" style="flex:1;"><label class="es-label">Phone *</label><input class="es-input" id="m-phone" /></div>
+    </div>
+    <div class="es-field"><label class="es-label">Facility *</label><select class="es-select" id="m-facility"></select></div>
+
+    <div id="single-fields">
+      <div class="es-flex es-gap-3">
+        <div class="es-field" style="flex:1;"><label class="es-label">Date</label><input class="es-input" type="date" id="m-date" /></div>
+        <div class="es-field" style="flex:1;"><label class="es-label">Start Time</label><input class="es-input" type="time" id="m-start" /></div>
+        <div class="es-field" style="flex:1;"><label class="es-label">Duration (min)</label><input class="es-input" type="number" step="15" id="m-duration" value="60" /></div>
+      </div>
+    </div>
+
+    <div id="recurring-fields" style="display:none;">
+      <div class="es-flex es-gap-3">
+        <div class="es-field" style="flex:1;"><label class="es-label">Start Date</label><input class="es-input" type="date" id="m-r-start" /></div>
+        <div class="es-field" style="flex:1;"><label class="es-label">End Date</label><input class="es-input" type="date" id="m-r-end" /></div>
+      </div>
+      <div class="es-flex es-gap-3">
+        <div class="es-field" style="flex:1;"><label class="es-label">Start Time</label><input class="es-input" type="time" id="m-r-time" /></div>
+        <div class="es-field" style="flex:1;"><label class="es-label">Duration (min)</label><input class="es-input" type="number" step="15" id="m-r-duration" value="120" /></div>
+      </div>
+      <div class="es-field">
+        <label class="es-label">Repeat On</label>
+        <div class="es-flex es-gap-2" id="m-r-weekdays"></div>
+      </div>
+      <button class="es-btn es-btn--ghost es-btn--block" id="m-r-preview" type="button">Preview Occurrences</button>
+      <div id="m-r-preview-results" class="es-mt-4"></div>
+    </div>
+
+    <hr class="es-divider" style="margin:16px 0;" />
+
+    <div class="es-flex es-gap-3">
+      <div class="es-field" style="flex:1;"><label class="es-label">Custom Price (BDT, optional override)</label><input class="es-input" type="number" id="m-price" /></div>
+      <div class="es-field" style="flex:1;"><label class="es-label">Discount (BDT)</label><input class="es-input" type="number" id="m-discount" value="0" /></div>
+    </div>
+    <div class="es-flex es-gap-3">
+      <div class="es-field" style="flex:1;"><label class="es-label">Payment Status</label>
+        <select class="es-select" id="m-paystatus"><option value="unpaid">Unpaid</option><option value="partial">Partial</option><option value="paid">Paid</option></select>
+      </div>
+      <div class="es-field" style="flex:1;"><label class="es-label">Payment Method</label>
+        <select class="es-select" id="m-paymethod"><option value="cash">Cash</option><option value="bkash">bKash</option><option value="nagad">Nagad</option><option value="bank">Bank</option><option value="due">Due</option></select>
+      </div>
+      <div class="es-field" style="flex:1;"><label class="es-label">Paid Amount</label><input class="es-input" type="number" id="m-paid" value="0" /></div>
+    </div>
+    <div class="es-field"><label class="es-label">Note</label><textarea class="es-input" id="m-note" rows="2"></textarea></div>
+
+    <p id="modal-error" style="color:var(--es-red);font-size:0.85rem;display:none;"></p>
+    <button class="es-btn es-btn--primary es-btn--block" id="m-submit">Create Booking</button>
+  </div>
+</div>
+
+<script type="module">
+  import { initAdminLayout, showToast } from "/assets/js/admin-layout.js";
+  import { getActiveFacilities } from "/assets/js/facility-manager.js";
+  import { listActivePricingRules, computePrice } from "/assets/js/pricing-engine.js";
+  import { getBusinessSettings } from "/assets/js/settings-manager.js";
+  import { db } from "/assets/js/firebase-config.js";
+  import { collection, getDocs, query, where, orderBy, limit as fbLimit } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+  import { minutesToTimeStr, timeStrToMinutes } from "/assets/js/utils.js";
+  import {
+    createBooking, setBookingStatus, previewRecurringOccurrences,
+    generateWeeklyOccurrences, createRecurringBookings, SlotConflictError, ValidationError,
+  } from "/assets/js/booking-engine.js";
+
+  const { user, profile } = await initAdminLayout({ activePage: "bookings", permission: "bookings.view" });
+  const canEdit = profile.role === "super_admin" || profile.permissions?.["bookings.edit"];
+  const canCancel = profile.role === "super_admin" || profile.permissions?.["bookings.cancel"];
+
+  let facilities = [], rules = [], offers = [], settings = null;
+  let allBookings = [], filtered = [], page = 0;
+  const PAGE_SIZE = 20;
+
+  facilities = await getActiveFacilities();
+  rules = await listActivePricingRules();
+  settings = await getBusinessSettings();
+  const offerSnap = await getDocs(query(collection(db, "offers"), where("active", "==", true)));
+  offers = offerSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+
+  document.getElementById("f-facility").innerHTML += facilities.map((f) => `<option value="${f.id}">${f.name}</option>`).join("");
+  document.getElementById("m-facility").innerHTML = facilities.map((f) => `<option value="${f.id}">${f.name}</option>`).join("");
+  document.getElementById("m-r-weekdays").innerHTML = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"]
+    .map((d, i) => `<label style="display:flex;align-items:center;gap:4px;font-size:0.8rem;"><input type="checkbox" value="${i}" class="m-weekday" />${d}</label>`)
+    .join("");
+
+  async function loadBookings() {
+    // Bounded by design: pulls last 90 days by default rather than the entire collection (brief §33).
+    const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 90);
+    const cutoffISO = cutoff.toISOString().slice(0, 10);
+    const snap = await getDocs(query(collection(db, "bookings"), where("date", ">=", cutoffISO), orderBy("date", "desc"), fbLimit(1000)));
+    allBookings = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    applyFilters();
+  }
+
+  function applyFilters() {
+    const term = document.getElementById("f-search").value.toLowerCase();
+    const date = document.getElementById("f-date").value;
+    const facilityId = document.getElementById("f-facility").value;
+    const status = document.getElementById("f-status").value;
+    const payment = document.getElementById("f-payment").value;
+
+    filtered = allBookings.filter((b) =>
+      (!term || b.customerName?.toLowerCase().includes(term) || b.customerPhone?.includes(term)) &&
+      (!date || b.date === date) &&
+      (!facilityId || b.facilityId === facilityId) &&
+      (!status || b.status === status) &&
+      (!payment || b.paymentStatus === payment)
+    );
+    page = 0;
+    renderTable();
+  }
+
+  function renderTable() {
+    const body = document.getElementById("bookings-body");
+    const start = page * PAGE_SIZE;
+    const rows = filtered.slice(start, start + PAGE_SIZE);
+
+    if (!filtered.length) {
+      body.innerHTML = `<tr><td colspan="8"><div class="es-state"><div class="es-state__icon">📭</div><p>No bookings match your filters.</p></div></td></tr>`;
+    } else {
+      body.innerHTML = rows.map(rowHTML).join("");
+      body.querySelectorAll("[data-action]").forEach((btn) => btn.addEventListener("click", onAction));
+    }
+
+    const total = filtered.length;
+    document.getElementById("pagination-label").textContent = total === 0 ? "0 results" : `${start + 1}–${Math.min(start + PAGE_SIZE, total)} of ${total}`;
+    document.getElementById("prev-page").disabled = page === 0;
+    document.getElementById("next-page").disabled = start + PAGE_SIZE >= total;
+  }
+
+  function rowHTML(b) {
+    const actions = [];
+    if (canEdit && b.status === "pending") actions.push(`<button class="es-icon-btn" data-action="approve" data-id="${b.id}" title="Approve">✓</button>`);
+    if (canEdit && b.status === "pending") actions.push(`<button class="es-icon-btn" data-action="reject" data-id="${b.id}" title="Reject">✕</button>`);
+    if (canEdit && b.status === "approved") actions.push(`<button class="es-icon-btn" data-action="confirm" data-id="${b.id}" title="Confirm">☑</button>`);
+    if (canEdit && b.status === "confirmed") actions.push(`<button class="es-icon-btn" data-action="complete" data-id="${b.id}" title="Mark Completed">🏁</button>`);
+    if (canEdit && b.status === "confirmed") actions.push(`<button class="es-icon-btn" data-action="no_show" data-id="${b.id}" title="Mark No-Show">⌀</button>`);
+    if (canCancel && !["completed", "cancelled", "rejected"].includes(b.status)) actions.push(`<button class="es-icon-btn" data-action="cancel" data-id="${b.id}" title="Cancel">🗑</button>`);
+
+    return `<tr>
+      <td data-label="Booking ID" class="es-mono">${b.bookingId || b.id}</td>
+      <td data-label="Customer">${b.customerName}<br/><span style="color:var(--es-moss);font-size:0.8rem;">${b.customerPhone}</span></td>
+      <td data-label="Facility">${b.facilityName}</td>
+      <td data-label="Date / Time" class="es-mono">${b.date}<br/>${minutesToTimeStr(b.startMinutes)}–${minutesToTimeStr(b.endMinutes)}</td>
+      <td data-label="Status"><span class="es-status-pill es-status-pill--${b.status}">${b.status.replace("_"," ")}</span></td>
+      <td data-label="Payment"><span class="es-badge es-badge--${b.paymentStatus}">${b.paymentStatus}</span></td>
+      <td data-label="Total" class="es-mono">${b.finalPrice} BDT</td>
+      <td data-label="Actions"><div class="es-table__actions">${actions.join("") || "—"}</div></td>
+    </tr>`;
+  }
+
+  async function onAction(e) {
+    const id = e.currentTarget.dataset.id;
+    const action = e.currentTarget.dataset.action;
+    const statusMap = { approve: "approved", reject: "rejected", confirm: "confirmed", complete: "completed", no_show: "no_show", cancel: "cancelled" };
+    const newStatus = statusMap[action];
+    if (["cancel", "reject"].includes(action) && !confirm(`Are you sure you want to ${action} this booking?`)) return;
+
+    try {
+      await setBookingStatus(id, newStatus, user.uid);
+      showToast(`Booking ${newStatus.replace("_"," ")}.`);
+      await loadBookings();
+    } catch (err) {
+      showToast(err.message || "Action failed.", "error");
+    }
+  }
+
+  document.getElementById("f-search").addEventListener("input", applyFilters);
+  document.getElementById("f-date").addEventListener("change", applyFilters);
+  document.getElementById("f-facility").addEventListener("change", applyFilters);
+  document.getElementById("f-status").addEventListener("change", applyFilters);
+  document.getElementById("f-payment").addEventListener("change", applyFilters);
+  document.getElementById("f-clear").addEventListener("click", () => {
+    ["f-search","f-date"].forEach((id) => (document.getElementById(id).value = ""));
+    ["f-facility","f-status","f-payment"].forEach((id) => (document.getElementById(id).value = ""));
+    applyFilters();
+  });
+  document.getElementById("prev-page").addEventListener("click", () => { page = Math.max(0, page - 1); renderTable(); });
+  document.getElementById("next-page").addEventListener("click", () => { page += 1; renderTable(); });
+
+  // ---- New / Recurring Booking Modal ----
+  const modal = document.getElementById("booking-modal");
+  document.getElementById("new-booking-btn").addEventListener("click", () => { modal.style.display = "flex"; });
+  document.getElementById("modal-close").addEventListener("click", () => { modal.style.display = "none"; });
+
+  document.getElementById("m-type").addEventListener("change", (e) => {
+    const recurring = e.target.value === "recurring";
+    document.getElementById("single-fields").style.display = recurring ? "none" : "block";
+    document.getElementById("recurring-fields").style.display = recurring ? "block" : "none";
+    document.getElementById("m-submit").textContent = recurring ? "Preview above, then create series" : "Create Booking";
+  });
+
+  document.getElementById("m-r-preview").addEventListener("click", async () => {
+    const facilityId = document.getElementById("m-facility").value;
+    const weekdays = [...document.querySelectorAll(".m-weekday:checked")].map((el) => Number(el.value));
+    const startDate = document.getElementById("m-r-start").value;
+    const endDate = document.getElementById("m-r-end").value;
+    const time = document.getElementById("m-r-time").value;
+    const duration = Number(document.getElementById("m-r-duration").value);
+    if (!weekdays.length || !startDate || !endDate || !time) { showToast("Fill in recurrence details first.", "error"); return; }
+
+    const occurrences = generateWeeklyOccurrences(startDate, endDate, weekdays, timeStrToMinutes(time), duration);
+    const checked = await previewRecurringOccurrences(occurrences, facilityId);
+    document.getElementById("m-r-preview-results").innerHTML = `
+      <p style="font-size:0.85rem;">${checked.filter((o) => o.available).length} available, ${checked.filter((o) => !o.available).length} conflicting of ${checked.length} occurrences.</p>
+      <div style="max-height:160px;overflow-y:auto;font-size:0.8rem;" class="es-mono">
+        ${checked.map((o) => `<div style="color:${o.available ? "var(--es-lime)" : "var(--es-red)"}">${o.date} ${minutesToTimeStr(o.startMinutes)} — ${o.available ? "Available" : "Conflict"}</div>`).join("")}
+      </div>`;
+    modal.dataset.previewedOccurrences = JSON.stringify(checked);
+  });
+
+  document.getElementById("m-submit").addEventListener("click", async () => {
+    const errorEl = document.getElementById("modal-error");
+    errorEl.style.display = "none";
+    const type = document.getElementById("m-type").value;
+    const facility = facilities.find((f) => f.id === document.getElementById("m-facility").value);
+    const customPrice = document.getElementById("m-price").value;
+    const discount = Number(document.getElementById("m-discount").value) || 0;
+    const paidAmount = Number(document.getElementById("m-paid").value) || 0;
+
+    const base = {
+      facilityId: facility.id,
+      facilityName: facility.name,
+      customerName: document.getElementById("m-name").value,
+      customerPhone: document.getElementById("m-phone").value,
+      customerEmail: "",
+      note: document.getElementById("m-note").value,
+      source: "admin",
+      createdBy: user.uid,
+      status: "confirmed",
+      paymentStatus: document.getElementById("m-paystatus").value,
+      paymentMethod: document.getElementById("m-paymethod").value,
+      paidAmount,
+      rules, offers, settings,
+    };
+
+    try {
+      if (type === "recurring") {
+        const occurrences = JSON.parse(modal.dataset.previewedOccurrences || "[]");
+        if (!occurrences.length) { errorEl.textContent = "Click \"Preview Occurrences\" first."; errorEl.style.display = "block"; return; }
+        const { created } = await createRecurringBookings(occurrences, base, user.uid);
+        showToast(`Created ${created.length} recurring bookings.`);
+      } else {
+        const date = document.getElementById("m-date").value;
+        const startMinutes = timeStrToMinutes(document.getElementById("m-start").value);
+        const durationMinutes = Number(document.getElementById("m-duration").value);
+
+        let overridePrice = null;
+        if (customPrice) {
+          const original = Number(customPrice);
+          overridePrice = { originalPrice: original, discountAmount: discount, finalPrice: Math.max(0, original - discount), pricingRuleId: null, offerId: null };
+        }
+
+        const { upsertCustomerOnBooking } = await import("/assets/js/customer-manager.js");
+        const result = await createBooking({ ...base, date, startMinutes, durationMinutes, overridePrice });
+        await upsertCustomerOnBooking(result, { isNew: true });
+        showToast(`Booking ${result.bookingId} created.`);
+      }
+      modal.style.display = "none";
+      await loadBookings();
+    } catch (err) {
+      if (err instanceof SlotConflictError || err instanceof ValidationError) {
+        errorEl.textContent = err.message;
+      } else {
+        errorEl.textContent = "Something went wrong creating this booking.";
+        console.error(err);
+      }
+      errorEl.style.display = "block";
+    }
+  });
+
+  await loadBookings();
+</script>
+</body>
+</html>

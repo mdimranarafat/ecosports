@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Settings — Eco Sports Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Work+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/global.css" />
+<link rel="stylesheet" href="/assets/css/admin.css" />
+<link rel="stylesheet" href="/assets/css/responsive.css" />
+</head>
+<body>
+<div class="es-admin-shell" id="es-admin-shell">
+  <div style="width:100%;">
+    <div class="es-topbar"><h1 class="es-topbar__title">Settings</h1></div>
+
+    <div class="es-tabs">
+      <button class="es-tabs__btn is-active" data-tab="business">Business Info</button>
+      <button class="es-tabs__btn" data-tab="booking">Booking Rules</button>
+      <button class="es-tabs__btn" data-tab="financial">Financial</button>
+    </div>
+
+    <div class="es-panel tab-panel" data-tab="business">
+      <div class="es-flex es-gap-3">
+        <div class="es-field" style="flex:1;"><label class="es-label">Business Name</label><input class="es-input" id="s-name" /></div>
+        <div class="es-field" style="flex:1;"><label class="es-label">Phone</label><input class="es-input" id="s-phone" /></div>
+      </div>
+      <div class="es-flex es-gap-3">
+        <div class="es-field" style="flex:1;"><label class="es-label">Email</label><input class="es-input" type="email" id="s-email" /></div>
+        <div class="es-field" style="flex:1;"><label class="es-label">Timezone</label><input class="es-input" id="s-timezone" /></div>
+      </div>
+      <div class="es-field"><label class="es-label">Address</label><input class="es-input" id="s-address" /></div>
+    </div>
+
+    <div class="es-panel tab-panel" data-tab="booking" style="display:none;">
+      <div class="es-flex es-gap-3">
+        <div class="es-field" style="flex:1;"><label class="es-label">Default Slot Interval (min)</label><input class="es-input" type="number" id="s-slot" /></div>
+        <div class="es-field" style="flex:1;"><label class="es-label">Min Booking Duration (min)</label><input class="es-input" type="number" id="s-min" /></div>
+        <div class="es-field" style="flex:1;"><label class="es-label">Max Booking Duration (min)</label><input class="es-input" type="number" id="s-max" /></div>
+      </div>
+      <div class="es-field"><label class="es-label">Booking Lead Time (minutes before start)</label><input class="es-input" type="number" id="s-lead" /></div>
+      <div class="es-field"><label class="es-label">Cancellation Policy</label><textarea class="es-input" id="s-policy" rows="3"></textarea></div>
+    </div>
+
+    <div class="es-panel tab-panel" data-tab="financial" style="display:none;">
+      <div class="es-flex es-gap-3">
+        <div class="es-field" style="flex:1;"><label class="es-label">Currency</label><input class="es-input" id="s-currency" /></div>
+        <div class="es-field" style="flex:1;">
+          <label class="es-label">Price Rounding</label>
+          <select class="es-select" id="s-rounding">
+            <option value="none">No rounding</option>
+            <option value="nearest10">Nearest 10</option>
+            <option value="nearest50">Nearest 50</option>
+            <option value="nearest100">Nearest 100</option>
+            <option value="down">Round down</option>
+            <option value="up">Round up</option>
+            <option value="custom">Custom increment</option>
+          </select>
+        </div>
+        <div class="es-field" style="flex:1;"><label class="es-label">Custom Increment</label><input class="es-input" type="number" id="s-increment" /></div>
+      </div>
+      <div class="es-field">
+        <label class="es-label">Weekend Days</label>
+        <div class="es-flex es-gap-2" id="s-weekend"></div>
+      </div>
+    </div>
+
+    <button class="es-btn es-btn--primary" id="save-btn" style="margin-top:var(--es-space-4);">Save Settings</button>
+  </div>
+</div>
+
+<script type="module">
+  import { initAdminLayout, showToast } from "/assets/js/admin-layout.js";
+  import { getBusinessSettings, updateBusinessSettings } from "/assets/js/settings-manager.js";
+
+  await initAdminLayout({ activePage: "settings", permission: "settings.manage" });
+
+  document.querySelectorAll(".es-tabs__btn").forEach((btn) => btn.addEventListener("click", () => {
+    document.querySelectorAll(".es-tabs__btn").forEach((b) => b.classList.remove("is-active"));
+    btn.classList.add("is-active");
+    document.querySelectorAll(".tab-panel").forEach((p) => (p.style.display = p.dataset.tab === btn.dataset.tab ? "block" : "none"));
+  }));
+
+  const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  document.getElementById("s-weekend").innerHTML = DAY_LABELS.map(
+    (d, i) => `<label class="es-badge" style="cursor:pointer;background:var(--es-panel);"><input type="checkbox" class="s-weekend-day" value="${i}" style="margin-right:4px;" />${d}</label>`
+  ).join("");
+
+  const settings = await getBusinessSettings();
+  document.getElementById("s-name").value = settings.businessName || "";
+  document.getElementById("s-phone").value = settings.phone || "";
+  document.getElementById("s-email").value = settings.email || "";
+  document.getElementById("s-timezone").value = settings.timezone || "";
+  document.getElementById("s-address").value = settings.address || "";
+  document.getElementById("s-slot").value = settings.defaultSlotInterval || 30;
+  document.getElementById("s-min").value = settings.minBookingDuration || 30;
+  document.getElementById("s-max").value = settings.maxBookingDuration || 240;
+  document.getElementById("s-lead").value = settings.bookingLeadTimeMinutes || 30;
+  document.getElementById("s-policy").value = settings.cancellationPolicy || "";
+  document.getElementById("s-currency").value = settings.currency || "BDT";
+  document.getElementById("s-rounding").value = settings.roundingMode || "nearest10";
+  document.getElementById("s-increment").value = settings.roundingIncrement || 10;
+  document.querySelectorAll(".s-weekend-day").forEach((cb) => (cb.checked = (settings.weekendDays || [5, 6]).includes(Number(cb.value))));
+
+  document.getElementById("save-btn").addEventListener("click", async () => {
+    const weekendDays = [...document.querySelectorAll(".s-weekend-day")].filter((cb) => cb.checked).map((cb) => Number(cb.value));
+    await updateBusinessSettings({
+      businessName: document.getElementById("s-name").value.trim(),
+      phone: document.getElementById("s-phone").value.trim(),
+      email: document.getElementById("s-email").value.trim(),
+      timezone: document.getElementById("s-timezone").value.trim(),
+      address: document.getElementById("s-address").value.trim(),
+      defaultSlotInterval: Number(document.getElementById("s-slot").value),
+      minBookingDuration: Number(document.getElementById("s-min").value),
+      maxBookingDuration: Number(document.getElementById("s-max").value),
+      bookingLeadTimeMinutes: Number(document.getElementById("s-lead").value),
+      cancellationPolicy: document.getElementById("s-policy").value.trim(),
+      currency: document.getElementById("s-currency").value.trim(),
+      roundingMode: document.getElementById("s-rounding").value,
+      roundingIncrement: Number(document.getElementById("s-increment").value) || 10,
+      weekendDays,
+    });
+    showToast("Settings saved");
+  });
+</script>
+</body>
+</html>

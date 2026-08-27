@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Staff &amp; Roles — Eco Sports Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Work+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/global.css" />
+<link rel="stylesheet" href="/assets/css/admin.css" />
+<link rel="stylesheet" href="/assets/css/responsive.css" />
+</head>
+<body>
+<div class="es-admin-shell" id="es-admin-shell">
+  <div style="width:100%;">
+    <div class="es-topbar">
+      <h1 class="es-topbar__title">Staff &amp; Roles</h1>
+      <div class="es-topbar__actions"><button class="es-btn es-btn--primary" id="new-btn" style="padding:10px 18px;font-size:0.85rem;">+ Add Staff</button></div>
+    </div>
+
+    <div class="es-table-wrap">
+      <table class="es-table">
+        <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Last Login</th><th>Actions</th></tr></thead>
+        <tbody id="staff-body"><tr><td colspan="6">Loading…</td></tr></tbody>
+      </table>
+    </div>
+
+    <p id="not-super-note" style="display:none;color:var(--es-moss);font-size:0.85rem;">
+      Only Super Admins can create accounts or change roles/permissions. You can still view staff and toggle active status here.
+    </p>
+  </div>
+</div>
+
+<div class="es-modal-backdrop" id="new-modal" style="display:none;">
+  <div class="es-modal">
+    <div class="es-modal__head"><h3 style="margin:0;">Add Staff Account</h3><button class="es-modal__close" id="new-close">&times;</button></div>
+    <div class="es-field"><label class="es-label">Full Name *</label><input class="es-input" id="n-name" /></div>
+    <div class="es-field"><label class="es-label">Email *</label><input class="es-input" type="email" id="n-email" /></div>
+    <div class="es-field"><label class="es-label">Temporary Password *</label><input class="es-input" type="text" id="n-password" placeholder="Min 6 characters — share securely" /></div>
+    <div class="es-field">
+      <label class="es-label">Role</label>
+      <select class="es-select" id="n-role">
+        <option value="staff">Staff</option>
+        <option value="manager">Manager</option>
+        <option value="admin">Admin</option>
+        <option value="super_admin">Super Admin</option>
+      </select>
+    </div>
+    <p id="new-error" style="color:var(--es-red);font-size:0.85rem;display:none;"></p>
+    <button class="es-btn es-btn--primary es-btn--block" id="n-save">Create Account</button>
+  </div>
+</div>
+
+<div class="es-modal-backdrop" id="perm-modal" style="display:none;">
+  <div class="es-modal">
+    <div class="es-modal__head"><h3 id="perm-title" style="margin:0;">Permissions</h3><button class="es-modal__close" id="perm-close">&times;</button></div>
+    <input type="hidden" id="p-uid" />
+    <div class="es-field">
+      <label class="es-label">Role</label>
+      <select class="es-select" id="p-role">
+        <option value="staff">Staff</option>
+        <option value="manager">Manager</option>
+        <option value="admin">Admin</option>
+        <option value="super_admin">Super Admin</option>
+      </select>
+    </div>
+    <div class="es-field">
+      <label class="es-label">Permissions</label>
+      <div id="p-permissions" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;"></div>
+    </div>
+    <button class="es-btn es-btn--primary es-btn--block" id="p-save">Save Role &amp; Permissions</button>
+  </div>
+</div>
+
+<script type="module">
+  import { initAdminLayout, showToast } from "/assets/js/admin-layout.js";
+  import { listStaff, createStaffAccount, updateStaffRole, setStaffStatus } from "/assets/js/staff-manager.js";
+  import { PERMISSIONS, ROLE_LABELS, defaultPermissionsForRole } from "/assets/js/roles.js";
+
+  const { profile } = await initAdminLayout({ activePage: "staff", permission: "staff.manage" });
+  const isSuper = profile.role === "super_admin";
+  document.getElementById("not-super-note").style.display = isSuper ? "none" : "block";
+  document.getElementById("new-btn").style.display = isSuper ? "inline-flex" : "none";
+
+  document.getElementById("p-permissions").innerHTML = PERMISSIONS.map(
+    (p) => `<label style="font-size:0.8rem;"><input type="checkbox" class="p-perm" value="${p}" /> ${p}</label>`
+  ).join("");
+
+  async function load() {
+    const staff = await listStaff();
+    document.getElementById("staff-body").innerHTML = staff.map((s) => `<tr>
+      <td data-label="Name">${s.name || "—"}</td>
+      <td data-label="Email">${s.email}</td>
+      <td data-label="Role">${ROLE_LABELS[s.role] || s.role}</td>
+      <td data-label="Status"><span class="es-badge ${s.status === "active" ? "es-badge--paid" : "es-badge--unpaid"}">${s.status}</span></td>
+      <td data-label="Last Login">${s.lastLogin?.toDate ? s.lastLogin.toDate().toLocaleString() : "Never"}</td>
+      <td>
+        <button class="es-btn es-btn--sm status-btn" data-uid="${s.uid}" data-status="${s.status}">${s.status === "active" ? "Deactivate" : "Activate"}</button>
+        ${isSuper ? `<button class="es-btn es-btn--sm perm-btn" data-uid="${s.uid}" data-role="${s.role}" data-perms='${JSON.stringify(s.permissions || {})}'>Edit Role</button>` : ""}
+      </td>
+    </tr>`).join("");
+
+    document.querySelectorAll(".status-btn").forEach((b) => b.addEventListener("click", async () => {
+      await setStaffStatus(b.dataset.uid, b.dataset.status === "active" ? "disabled" : "active");
+      showToast("Status updated"); load();
+    }));
+    document.querySelectorAll(".perm-btn").forEach((b) => b.addEventListener("click", () => openPermModal(b)));
+  }
+
+  function openPermModal(btn) {
+    document.getElementById("p-uid").value = btn.dataset.uid;
+    document.getElementById("p-role").value = btn.dataset.role;
+    const perms = JSON.parse(btn.dataset.perms);
+    document.querySelectorAll(".p-perm").forEach((cb) => (cb.checked = !!perms[cb.value]));
+    document.getElementById("perm-modal").style.display = "flex";
+  }
+
+  document.getElementById("p-role").addEventListener("change", (e) => {
+    const defaults = defaultPermissionsForRole(e.target.value);
+    document.querySelectorAll(".p-perm").forEach((cb) => (cb.checked = !!defaults[cb.value]));
+  });
+
+  document.getElementById("perm-close").addEventListener("click", () => (document.getElementById("perm-modal").style.display = "none"));
+  document.getElementById("p-save").addEventListener("click", async () => {
+    const uid = document.getElementById("p-uid").value;
+    const role = document.getElementById("p-role").value;
+    const permissions = {};
+    document.querySelectorAll(".p-perm").forEach((cb) => (permissions[cb.value] = cb.checked));
+    await updateStaffRole(uid, role, permissions);
+    document.getElementById("perm-modal").style.display = "none";
+    showToast("Role & permissions updated");
+    load();
+  });
+
+  document.getElementById("new-btn")?.addEventListener("click", () => (document.getElementById("new-modal").style.display = "flex"));
+  document.getElementById("new-close").addEventListener("click", () => (document.getElementById("new-modal").style.display = "none"));
+
+  document.getElementById("n-save").addEventListener("click", async () => {
+    const name = document.getElementById("n-name").value.trim();
+    const email = document.getElementById("n-email").value.trim();
+    const password = document.getElementById("n-password").value;
+    const role = document.getElementById("n-role").value;
+    if (!name || !email || password.length < 6) {
+      document.getElementById("new-error").textContent = "Name, email, and a 6+ character password are required.";
+      document.getElementById("new-error").style.display = "block";
+      return;
+    }
+    try {
+      await createStaffAccount({ name, email, password, role });
+      document.getElementById("new-modal").style.display = "none";
+      showToast("Staff account created");
+      load();
+    } catch (err) {
+      document.getElementById("new-error").textContent = err.message || "Failed to create account.";
+      document.getElementById("new-error").style.display = "block";
+    }
+  });
+
+  await load();
+</script>
+</body>
+</html>

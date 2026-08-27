@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Offers — Eco Sports Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Work+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/global.css" />
+<link rel="stylesheet" href="/assets/css/admin.css" />
+<link rel="stylesheet" href="/assets/css/responsive.css" />
+</head>
+<body>
+<div class="es-admin-shell" id="es-admin-shell">
+  <div style="width:100%;">
+    <div class="es-topbar">
+      <h1 class="es-topbar__title">Offers &amp; Promotions</h1>
+      <div class="es-topbar__actions"><button class="es-btn es-btn--primary" id="new-btn" style="padding:10px 18px;font-size:0.85rem;">+ New Offer</button></div>
+    </div>
+
+    <div class="es-metrics-grid">
+      <div class="es-metric-card"><div class="es-metric-card__label">Total Redemptions</div><div class="es-metric-card__value" id="stat-usage">—</div></div>
+      <div class="es-metric-card"><div class="es-metric-card__label">Discount Given</div><div class="es-metric-card__value" id="stat-discount">—</div></div>
+      <div class="es-metric-card"><div class="es-metric-card__label">Revenue via Offers</div><div class="es-metric-card__value" id="stat-revenue">—</div></div>
+    </div>
+
+    <div class="es-table-wrap">
+      <table class="es-table">
+        <thead><tr><th>Name</th><th>Type</th><th>Value</th><th>Facility</th><th>Window</th><th>Usage</th><th>Status</th><th>Actions</th></tr></thead>
+        <tbody id="offers-body"><tr><td colspan="8">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="es-modal-backdrop" id="offer-modal" style="display:none;">
+  <div class="es-modal">
+    <div class="es-modal__head"><h3 id="modal-title" style="margin:0;">New Offer</h3><button class="es-modal__close" id="modal-close">&times;</button></div>
+    <input type="hidden" id="o-id" />
+    <div class="es-flex es-gap-3">
+      <div class="es-field" style="flex:1;"><label class="es-label">Offer Name *</label><input class="es-input" id="o-name" placeholder="Sunday–Wednesday Day Offer" /></div>
+      <div class="es-field" style="flex:1;"><label class="es-label">Code (optional)</label><input class="es-input" id="o-code" placeholder="DAYOFFER" /></div>
+    </div>
+    <div class="es-flex es-gap-3">
+      <div class="es-field" style="flex:1;">
+        <label class="es-label">Type</label>
+        <select class="es-select" id="o-type">
+          <option value="percentage">Percentage Discount</option>
+          <option value="fixed">Fixed Amount Discount</option>
+          <option value="special_price">Special Price (per hour)</option>
+          <option value="buyx">Buy X Hours, Get Discount</option>
+        </select>
+      </div>
+      <div class="es-field" style="flex:1;"><label class="es-label">Value (%, BDT, or BDT/hr)</label><input class="es-input" type="number" id="o-value" /></div>
+      <div class="es-field" style="flex:1;"><label class="es-label">Threshold Minutes (buyx only)</label><input class="es-input" type="number" id="o-threshold" placeholder="120" /></div>
+    </div>
+    <div class="es-field">
+      <label class="es-label">Applies To Facility</label>
+      <select class="es-select" id="o-facility"><option value="">All Facilities</option></select>
+    </div>
+    <div class="es-field">
+      <label class="es-label">Days</label>
+      <div class="es-flex es-gap-2" id="o-days"></div>
+    </div>
+    <div class="es-flex es-gap-3">
+      <div class="es-field" style="flex:1;"><label class="es-label">Start Time (optional)</label><input class="es-input" type="time" id="o-start-time" /></div>
+      <div class="es-field" style="flex:1;"><label class="es-label">End Time (optional)</label><input class="es-input" type="time" id="o-end-time" /></div>
+    </div>
+    <div class="es-flex es-gap-3">
+      <div class="es-field" style="flex:1;"><label class="es-label">Start Date</label><input class="es-input" type="date" id="o-start-date" /></div>
+      <div class="es-field" style="flex:1;"><label class="es-label">End Date</label><input class="es-input" type="date" id="o-end-date" /></div>
+      <div class="es-field" style="flex:1;"><label class="es-label">Usage Limit (optional)</label><input class="es-input" type="number" id="o-limit" /></div>
+    </div>
+    <div class="es-field"><label class="es-label"><input type="checkbox" id="o-active" checked /> Active</label></div>
+    <p id="modal-error" style="color:var(--es-red);font-size:0.85rem;display:none;"></p>
+    <button class="es-btn es-btn--primary es-btn--block" id="o-save">Save Offer</button>
+  </div>
+</div>
+
+<script type="module">
+  import { initAdminLayout, showToast } from "/assets/js/admin-layout.js";
+  import { listOffers, createOffer, updateOffer, setOfferActive, deleteOffer, offerSummaryStats } from "/assets/js/offers-engine.js";
+  import { getAllFacilities } from "/assets/js/facility-manager.js";
+  import { formatCurrency, timeStrToMinutes, minutesToTimeStr } from "/assets/js/utils.js";
+
+  await initAdminLayout({ activePage: "offers", permission: "offers.manage" });
+
+  const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  let facilities = [];
+  let offers = [];
+
+  facilities = await getAllFacilities();
+  document.getElementById("o-facility").innerHTML =
+    `<option value="">All Facilities</option>` + facilities.map((f) => `<option value="${f.id}">${f.name}</option>`).join("");
+  document.getElementById("o-days").innerHTML = DAY_LABELS.map(
+    (d, i) => `<label class="es-badge" style="cursor:pointer;background:var(--es-panel);"><input type="checkbox" class="o-day" value="${i}" checked style="margin-right:4px;" />${d}</label>`
+  ).join("");
+
+  function typeLabel(o) {
+    return { percentage: "% Discount", fixed: "Fixed Discount", special_price: "Special Price", buyx: "Buy-X Discount" }[o.type] || o.type;
+  }
+  function valueLabel(o) {
+    if (o.type === "percentage") return `${o.value}%`;
+    if (o.type === "special_price") return `${formatCurrency(o.value)}/hr`;
+    return formatCurrency(o.value);
+  }
+
+  function row(o) {
+    const facName = facilities.find((f) => f.id === o.facilityId)?.name || "All facilities";
+    const window = `${o.days?.length === 7 ? "Every day" : o.days.map((d) => DAY_LABELS[d]).join(",")}${o.startTime != null ? ` · ${minutesToTimeStr(o.startTime)}–${minutesToTimeStr(o.endTime)}` : ""}`;
+    return `<tr>
+      <td data-label="Name">${o.name}${o.code ? ` <span class="es-mono" style="color:var(--es-moss);">(${o.code})</span>` : ""}</td>
+      <td data-label="Type">${typeLabel(o)}</td>
+      <td data-label="Value">${valueLabel(o)}</td>
+      <td data-label="Facility">${facName}</td>
+      <td data-label="Window">${window}</td>
+      <td data-label="Usage">${o.usageCount || 0}${o.usageLimit ? ` / ${o.usageLimit}` : ""}</td>
+      <td data-label="Status"><span class="es-badge ${o.active ? "es-badge--paid" : "es-badge--unpaid"}">${o.active ? "Active" : "Inactive"}</span></td>
+      <td>
+        <button class="es-btn es-btn--sm toggle-btn" data-id="${o.id}" data-active="${o.active}">${o.active ? "Deactivate" : "Activate"}</button>
+        <button class="es-btn es-btn--sm edit-btn" data-id="${o.id}">Edit</button>
+        <button class="es-btn es-btn--sm es-btn--danger delete-btn" data-id="${o.id}">Delete</button>
+      </td>
+    </tr>`;
+  }
+
+  async function load() {
+    offers = await listOffers();
+    document.getElementById("offers-body").innerHTML = offers.length ? offers.map(row).join("") : `<tr><td colspan="8">No offers yet.</td></tr>`;
+    const stats = offerSummaryStats(offers);
+    document.getElementById("stat-usage").textContent = stats.totalUsage;
+    document.getElementById("stat-discount").textContent = formatCurrency(stats.totalDiscountGiven);
+    document.getElementById("stat-revenue").textContent = formatCurrency(stats.totalRevenueGenerated);
+
+    document.querySelectorAll(".toggle-btn").forEach((b) => b.addEventListener("click", async () => {
+      await setOfferActive(b.dataset.id, b.dataset.active !== "true");
+      showToast("Offer updated"); load();
+    }));
+    document.querySelectorAll(".delete-btn").forEach((b) => b.addEventListener("click", async () => {
+      if (!confirm("Delete this offer permanently?")) return;
+      await deleteOffer(b.dataset.id); showToast("Offer deleted"); load();
+    }));
+    document.querySelectorAll(".edit-btn").forEach((b) => b.addEventListener("click", () => openModal(offers.find((o) => o.id === b.dataset.id))));
+  }
+
+  function openModal(offer = null) {
+    document.getElementById("modal-title").textContent = offer ? "Edit Offer" : "New Offer";
+    document.getElementById("modal-error").style.display = "none";
+    document.getElementById("o-id").value = offer?.id || "";
+    document.getElementById("o-name").value = offer?.name || "";
+    document.getElementById("o-code").value = offer?.code || "";
+    document.getElementById("o-type").value = offer?.type || "percentage";
+    document.getElementById("o-value").value = offer?.value ?? "";
+    document.getElementById("o-threshold").value = offer?.thresholdMinutes ?? "";
+    document.getElementById("o-facility").value = offer?.facilityId || "";
+    document.getElementById("o-start-time").value = offer?.startTime != null ? minutesToTimeStr(offer.startTime) : "";
+    document.getElementById("o-end-time").value = offer?.endTime != null ? minutesToTimeStr(offer.endTime) : "";
+    document.getElementById("o-start-date").value = offer?.startDate || "";
+    document.getElementById("o-end-date").value = offer?.endDate || "";
+    document.getElementById("o-limit").value = offer?.usageLimit ?? "";
+    document.getElementById("o-active").checked = offer ? offer.active : true;
+    const days = offer?.days || [0, 1, 2, 3, 4, 5, 6];
+    document.querySelectorAll(".o-day").forEach((cb) => (cb.checked = days.includes(Number(cb.value))));
+    document.getElementById("offer-modal").style.display = "flex";
+  }
+
+  document.getElementById("new-btn").addEventListener("click", () => openModal());
+  document.getElementById("modal-close").addEventListener("click", () => (document.getElementById("offer-modal").style.display = "none"));
+
+  document.getElementById("o-save").addEventListener("click", async () => {
+    const name = document.getElementById("o-name").value.trim();
+    const value = document.getElementById("o-value").value;
+    if (!name || value === "") {
+      document.getElementById("modal-error").textContent = "Name and value are required.";
+      document.getElementById("modal-error").style.display = "block";
+      return;
+    }
+    const days = [...document.querySelectorAll(".o-day")].filter((cb) => cb.checked).map((cb) => Number(cb.value));
+    const startTimeVal = document.getElementById("o-start-time").value;
+    const endTimeVal = document.getElementById("o-end-time").value;
+    const payload = {
+      name,
+      code: document.getElementById("o-code").value.trim(),
+      type: document.getElementById("o-type").value,
+      value: Number(value),
+      thresholdMinutes: document.getElementById("o-threshold").value ? Number(document.getElementById("o-threshold").value) : null,
+      facilityId: document.getElementById("o-facility").value || null,
+      days,
+      startTime: startTimeVal ? timeStrToMinutes(startTimeVal) : null,
+      endTime: endTimeVal ? timeStrToMinutes(endTimeVal) : null,
+      startDate: document.getElementById("o-start-date").value || null,
+      endDate: document.getElementById("o-end-date").value || null,
+      usageLimit: document.getElementById("o-limit").value ? Number(document.getElementById("o-limit").value) : null,
+      active: document.getElementById("o-active").checked,
+    };
+    const id = document.getElementById("o-id").value;
+    if (id) await updateOffer(id, payload); else await createOffer(payload);
+    document.getElementById("offer-modal").style.display = "none";
+    showToast("Offer saved");
+    load();
+  });
+
+  await load();
+</script>
+</body>
+</html>

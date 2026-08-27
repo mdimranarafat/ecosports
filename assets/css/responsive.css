@@ -1,0 +1,86 @@
+/* ============================================================================
+   ECO SPORTS — Responsive rules. Mobile-first overrides layered on top of
+   global.css / public.css / admin.css. Loaded last on every page.
+   ============================================================================ */
+
+/* Tablet (≤ 1024px) --------------------------------------------------------- */
+@media (max-width: 1024px) {
+  .es-quickbook__card { grid-template-columns: repeat(2, 1fr); }
+  .es-footer__grid { grid-template-columns: repeat(2, 1fr); }
+  .es-booking-layout { grid-template-columns: 1fr; }
+  .es-summary-panel { position: static; order: -1; }
+  .es-charts-grid { grid-template-columns: 1fr; }
+  .es-steps { grid-template-columns: 1fr; }
+
+  .es-admin-shell { grid-template-columns: 1fr; }
+  .es-sidebar {
+    position: fixed; left: 0; top: 0; width: 240px; z-index: 300;
+    transform: translateX(-100%); transition: transform 200ms ease;
+  }
+  .es-sidebar.is-open { transform: translateX(0); box-shadow: 20px 0 60px rgba(0,0,0,0.5); }
+  .es-menu-toggle {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 40px; height: 40px; background: var(--es-pitch); border: 1px solid var(--es-line);
+    border-radius: var(--es-radius-sm); color: var(--es-chalk); cursor: pointer;
+  }
+  .es-sidebar-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 250; }
+  .es-sidebar-backdrop.is-open { display: block; }
+}
+
+/* Mobile (≤ 640px) ------------------------------------------------------------ */
+@media (max-width: 640px) {
+  .es-container { padding: 0 var(--es-space-3); }
+
+  .es-nav { display: none; }
+  .es-nav.is-open {
+    display: flex; flex-direction: column; position: absolute; top: 100%; left: 0; right: 0;
+    background: var(--es-pitch); border-bottom: 1px solid var(--es-line); padding: var(--es-space-3);
+  }
+  .es-nav__toggle { display: block; }
+
+  .es-hero { min-height: 90vh; text-align: left; }
+  .es-hero__stats { gap: var(--es-space-4); flex-wrap: wrap; }
+  .es-hero__cta { flex-direction: column; }
+  .es-hero__cta .es-btn { width: 100%; }
+
+  .es-quickbook__card { grid-template-columns: 1fr; }
+  .es-grid { grid-template-columns: 1fr; }
+  .es-footer__grid { grid-template-columns: 1fr; }
+  .es-footer__bottom { flex-direction: column; gap: var(--es-space-2); }
+
+  /* Admin data tables: collapse to stacked "card rows" instead of shrinking columns */
+  .es-table thead { display: none; }
+  .es-table, .es-table tbody, .es-table tr, .es-table td { display: block; width: 100%; }
+  .es-table tr { border-bottom: 1px solid var(--es-line); padding: var(--es-space-2) 0; }
+  .es-table td {
+    display: flex; justify-content: space-between; align-items: center; gap: var(--es-space-3);
+    border-bottom: none; padding: 6px var(--es-space-3);
+  }
+  .es-table td::before {
+    content: attr(data-label);
+    font-family: var(--es-font-mono); font-size: 0.68rem; text-transform: uppercase;
+    color: var(--es-moss); flex-shrink: 0;
+  }
+  .es-table-wrap { min-width: 0; }
+  .es-table { min-width: 0; }
+
+  .es-metrics-grid { grid-template-columns: repeat(2, 1fr); }
+  .es-main { padding: var(--es-space-3); }
+  .es-topbar__title { font-size: 1.3rem; }
+
+  .es-calendar { grid-template-columns: 1fr; }
+  .es-calendar__cell { min-height: unset; }
+}
+
+/* Small phones (≤ 380px) ----------------------------------------------------------- */
+@media (max-width: 380px) {
+  .es-metrics-grid { grid-template-columns: 1fr; }
+  h1 { font-size: 2.1rem; }
+}
+
+/* Print (for admin reports) ---------------------------------------------------------- */
+@media print {
+  .es-sidebar, .es-topbar__actions, .es-filterbar, .es-header, .es-footer { display: none !important; }
+  .es-admin-shell { grid-template-columns: 1fr; }
+  body { background: white; color: black; }
+}

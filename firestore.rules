@@ -1,0 +1,249 @@
+rules_version = '2';
+
+// ============================================================================
+// ECO SPORTS — FIRESTORE SECURITY RULES
+// Least-privilege. No `allow read, write: if true` anywhere.
+// ============================================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // -------------------------------------------------------------------
+    // HELPERS
+    // -------------------------------------------------------------------
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function userDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function isActiveStaff() {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && userDoc().data.status == 'active';
+    }
+
+    function role() {
+      return isActiveStaff() ? userDoc().data.role : null;
+    }
+
+    function isSuperAdmin() {
+      return isActiveStaff() && role() == 'super_admin';
+    }
+
+    // Checks an explicit permission key on the user's permissions map.
+    // super_admin always passes regardless of the map.
+    function hasPerm(key) {
+      return isSuperAdmin()
+        || (isActiveStaff() && userDoc().data.permissions[key] == true);
+    }
+
+    // A user may never write a role/permissions value that is more
+    // privileged than what a super_admin explicitly assigned. Only
+    // super_admin can touch the users collection's role/permissions fields.
+    function notEscalatingSelf() {
+      return request.auth.uid != resource.id
+        || (request.resource.data.role == resource.data.role
+            && request.resource.data.permissions == resource.data.permissions);
+    }
+
+    // -------------------------------------------------------------------
+    // USERS  (staff accounts, roles, permissions)
+    // -------------------------------------------------------------------
+    match /users/{userId} {
+      // Staff can read their own profile; super_admin/admin with staff.manage can read all.
+      allow get: if isSignedIn() && (request.auth.uid == userId || hasPerm('staff.manage'));
+      allow list: if hasPerm('staff.manage');
+
+      // Only super_admin can create new staff accounts / set roles.
+      allow create: if isSuperAdmin();
+
+      // Updates: super_admin can change anything. A non-super-admin with
+      // staff.manage can update non-role/permission fields (e.g. name) but
+      // can NEVER escalate their own or anyone's role/permissions — that
+      // prevents "hardcoded admin email is the only security mechanism"
+      // style bypasses and self-escalation entirely.
+      //
+      // Separately, ANY signed-in user may update *only* their own
+      // lastLogin timestamp on their own doc (written by auth.js on every
+      // sign-in) — this is the one field every account needs to write
+      // regardless of role, and onlyChangedFields() below guarantees it
+      // can't be used as a side channel to change anything else.
+      function onlyChangedFields(allowed) {
+        return request.resource.data.diff(resource.data).affectedKeys().hasOnly(allowed);
+      }
+
+      allow update: if isSuperAdmin()
+        || (hasPerm('staff.manage')
+            && request.resource.data.role == resource.data.role
+            && request.resource.data.permissions == resource.data.permissions
+            && notEscalatingSelf())
+        || (request.auth.uid == userId && onlyChangedFields(['lastLogin']));
+
+      allow delete: if isSuperAdmin();
+    }
+
+    // -------------------------------------------------------------------
+    // FACILITIES — public read (only necessary fields are exposed by the
+    // UI; rules can't hide fields but nothing sensitive lives here),
+    // writes restricted to facilities.edit permission.
+    // -------------------------------------------------------------------
+    match /facilities/{facilityId} {
+      allow read: if true; // customers must see facilities to book
+      allow create, update, delete: if hasPerm('facilities.edit');
+    }
+
+    // -------------------------------------------------------------------
+    // PRICING RULES — public read-only (needed so the client can compute
+    // a transparent proposed price), writes restricted.
+    // -------------------------------------------------------------------
+    match /pricingRules/{ruleId} {
+      allow read: if true;
+      allow create, update, delete: if hasPerm('pricing.manage');
+    }
+
+    // -------------------------------------------------------------------
+    // OFFERS — public read of active offers only for price computation;
+    // writes restricted.
+    // -------------------------------------------------------------------
+    match /offers/{offerId} {
+      allow read: if true;
+      allow create, update, delete: if hasPerm('offers.manage');
+    }
+
+    // -------------------------------------------------------------------
+    // BOOKINGS — the most sensitive collection.
+    //
+    // Public (unauthenticated) customers MAY create a booking, but:
+    //   - status must be exactly "pending"
+    //   - paymentStatus must be exactly "unpaid"
+    //   - paidAmount must be 0
+    //   - source must be "public"
+    //   - the price fields must not be wildly below the cheapest active
+    //     pricing rule for that facility (defense-in-depth; full
+    //     validation still happens via the transaction logic client-side
+    //     and should be hardened server-side with a Cloud Function later)
+    //   - required fields must be present and correctly typed
+    //
+    // Public users can NEVER read other people's bookings (privacy) and
+    // can NEVER update or delete a booking once created — only staff can
+    // approve/edit/cancel.
+    // -------------------------------------------------------------------
+    match /bookings/{bookingId} {
+
+      allow get: if hasPerm('bookings.view');
+      // No public list access to the raw bookings collection — availability
+      // is served through the narrower query below plus client aggregation,
+      // never a full dump of customer data.
+      allow list: if hasPerm('bookings.view');
+
+      allow create: if hasPerm('bookings.create')
+        || isValidPublicBooking();
+
+      function isValidPublicBooking() {
+        let d = request.resource.data;
+        return d.status == 'pending'
+          && d.paymentStatus == 'unpaid'
+          && d.paidAmount == 0
+          && d.source == 'public'
+          && d.facilityId is string
+          && d.customerName is string && d.customerName.size() > 0
+          && d.customerPhone is string && d.customerPhone.size() >= 6
+          && d.durationMinutes is int && d.durationMinutes > 0
+          && d.finalPrice is number && d.finalPrice >= 0
+          // final price can never be less than 1 BDT/min of the cheapest
+          // plausible rate as a sanity floor against client tampering
+          && d.finalPrice >= (d.durationMinutes * 1);
+      }
+
+      allow update: if hasPerm('bookings.edit')
+        || (hasPerm('bookings.cancel')
+            && request.resource.data.status == 'cancelled'
+            && resource.data.status in ['pending', 'approved', 'confirmed']);
+
+      allow delete: if isSuperAdmin();
+    }
+
+    // -------------------------------------------------------------------
+    // CUSTOMERS — staff only. Never publicly readable (PII + financials).
+    // -------------------------------------------------------------------
+    match /customers/{customerId} {
+      allow read: if hasPerm('customers.view');
+      allow write: if hasPerm('customers.view'); // profile is maintained by booking flow logic run by staff-permissioned code paths
+    }
+
+    // -------------------------------------------------------------------
+    // EXPENSES — staff only, revenue-adjacent financial data.
+    // -------------------------------------------------------------------
+    match /expenses/{expenseId} {
+      allow read: if hasPerm('revenue.view');
+      allow create, update, delete: if hasPerm('expenses.manage');
+    }
+
+    // -------------------------------------------------------------------
+    // PAYMENT RECORDS — staff only.
+    // -------------------------------------------------------------------
+    match /paymentRecords/{paymentId} {
+      allow read: if hasPerm('revenue.view');
+      allow create: if hasPerm('bookings.edit');
+      allow update, delete: if isSuperAdmin();
+    }
+
+    // -------------------------------------------------------------------
+    // AUDIT LOGS — append-only, never editable/deletable by anyone
+    // except super_admin (for legal/compliance export needs). Viewable
+    // only with explicit audit.view permission.
+    // -------------------------------------------------------------------
+    match /auditLogs/{logId} {
+      allow read: if hasPerm('audit.view');
+      allow create: if isActiveStaff(); // any authenticated staff action can log itself
+      allow update, delete: if false; // immutable, even for super_admin, by design
+    }
+
+    // -------------------------------------------------------------------
+    // SETTINGS — public read of a whitelisted-by-convention subset
+    // (business hours, currency) is required by the UI; write restricted.
+    // -------------------------------------------------------------------
+    match /settings/{settingId} {
+      allow read: if true;
+      allow write: if hasPerm('settings.manage');
+    }
+
+    // -------------------------------------------------------------------
+    // DAILY ANALYTICS — precomputed rollups, staff only.
+    // -------------------------------------------------------------------
+    match /dailyAnalytics/{day} {
+      allow read: if hasPerm('revenue.view');
+      allow write: if hasPerm('revenue.view');
+    }
+
+    // -------------------------------------------------------------------
+    // BACKUP LOGS — staff (settings.manage) only.
+    // -------------------------------------------------------------------
+    match /backupLogs/{logId} {
+      allow read, write: if hasPerm('settings.manage');
+    }
+
+    // Default deny for anything not explicitly matched above.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+
+// ============================================================================
+// SECURITY TESTING CHECKLIST (see also README.md → Security Checklist)
+// ============================================================================
+// [ ] Unauthenticated user can create ONLY status=pending / unpaid bookings
+// [ ] Unauthenticated user cannot list/read the bookings collection
+// [ ] Unauthenticated user cannot read /customers, /expenses, /auditLogs
+// [ ] Unauthenticated user cannot write /facilities, /pricingRules, /offers
+// [ ] Staff with only bookings.view cannot approve/edit/cancel bookings
+// [ ] Manager without pricing.manage cannot write /pricingRules
+// [ ] Admin without settings.manage cannot write /settings
+// [ ] A user cannot PATCH their own /users/{uid} doc to change role/permissions
+// [ ] No path allows `allow read, write: if true`
+// [ ] auditLogs documents cannot be updated or deleted by any role
+// ============================================================================

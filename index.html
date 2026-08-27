@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Eco Sports — Book Turfs, Courts &amp; Pool in Chattogram</title>
+<meta name="description" content="Eco Sports Chattogram — book 5A/6A/7A turf, badminton, swimming pool and more, instantly, with real-time availability." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Work+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/global.css" />
+<link rel="stylesheet" href="/assets/css/public.css" />
+<link rel="stylesheet" href="/assets/css/responsive.css" />
+</head>
+<body data-page="home">
+
+<div id="es-header-slot"></div>
+
+<section class="es-hero">
+  <div class="es-container">
+    <div class="es-hero__content">
+      <div class="es-eyebrow">Chattogram's Premium Sports Facility</div>
+      <h1>Your Slot.<br/>Your Game.<br/>Booked in Seconds.</h1>
+      <p style="font-size:1.1rem;max-width:520px;">Turf football, badminton, swimming, cricket nets and more — real-time availability, transparent pricing, zero back-and-forth phone calls.</p>
+      <div class="es-hero__cta">
+        <a href="/booking.html" class="es-btn es-btn--primary">Book Your Slot</a>
+        <a href="#quickbook" class="es-btn es-btn--ghost">Check Availability</a>
+      </div>
+      <div class="es-hero__stats">
+        <div><span class="es-hero__stat-num es-mono" id="stat-facilities">—</span><span class="es-hero__stat-label">Facilities</span></div>
+        <div><span class="es-hero__stat-num es-mono">24/7</span><span class="es-hero__stat-label">Online Booking</span></div>
+        <div><span class="es-hero__stat-num es-mono">Instant</span><span class="es-hero__stat-label">Confirmation</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="es-container es-quickbook" id="quickbook">
+  <div class="es-quickbook__card" id="quickbook-card">
+    <div class="es-field">
+      <label class="es-label">Facility</label>
+      <select class="es-select" id="qb-facility"><option>Loading…</option></select>
+    </div>
+    <div class="es-field">
+      <label class="es-label">Date</label>
+      <input class="es-input" type="date" id="qb-date" />
+    </div>
+    <div class="es-field">
+      <label class="es-label">Duration</label>
+      <select class="es-select" id="qb-duration">
+        <option value="60">1 hour</option>
+        <option value="90">1.5 hours</option>
+        <option value="120">2 hours</option>
+      </select>
+    </div>
+    <div class="es-field" style="margin-bottom:0;">
+      <label class="es-label">&nbsp;</label>
+      <button class="es-btn es-btn--primary es-btn--block" id="qb-check">Check Availability</button>
+    </div>
+  </div>
+  <div id="qb-results"></div>
+</div>
+
+<section class="es-section">
+  <div class="es-container">
+    <div class="es-section__head">
+      <div class="es-eyebrow">Our Facilities</div>
+      <h2>Built For Every Game</h2>
+      <p>Every facility below is managed live — availability, pricing, and hours update automatically the moment our team changes them.</p>
+    </div>
+    <div class="es-grid" id="facilities-grid">
+      <div class="es-state"><div class="es-skeleton" style="height:220px;"></div></div>
+    </div>
+  </div>
+</section>
+
+<section class="es-section es-section--alt">
+  <div class="es-container">
+    <div class="es-section__head">
+      <div class="es-eyebrow">How It Works</div>
+      <h2>Three Steps To Kickoff</h2>
+    </div>
+    <div class="es-steps">
+      <div class="es-step"><h3>Pick Your Slot</h3><p>Choose a facility, date, and time. See real, live availability — no guessing, no double-booking.</p></div>
+      <div class="es-step"><h3>Confirm Details</h3><p>Enter your name and phone number. See your final price instantly, offers already applied.</p></div>
+      <div class="es-step"><h3>Show Up &amp; Play</h3><p>Get your booking ID, arrive on time, and our staff will have everything ready.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="es-section" id="offers-preview-section">
+  <div class="es-container">
+    <div class="es-section__head">
+      <div class="es-eyebrow">Current Offers</div>
+      <h2>Save On Your Next Booking</h2>
+    </div>
+    <div class="es-grid" id="offers-preview-grid"><p>No active offers right now — check back soon.</p></div>
+  </div>
+</section>
+
+<div id="es-footer-slot"></div>
+<div class="es-toast" id="toast"></div>
+
+<script type="module">
+  import { initLayout } from "/assets/js/layout.js";
+  import { getActiveFacilities } from "/assets/js/facility-manager.js";
+  import { buildSlotGrid } from "/assets/js/availability.js";
+  import { minutesToTimeStr } from "/assets/js/utils.js";
+  import { db } from "/assets/js/firebase-config.js";
+  import { collection, getDocs, query, where } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+  initLayout();
+
+  const facilityIcons = { turf: "⚽", pool: "🏊", badminton: "🏸", cricket: "🏏", carrom: "🎯" };
+  function iconFor(f) {
+    const key = Object.keys(facilityIcons).find((k) => (f.slug || f.name || "").toLowerCase().includes(k));
+    return f.icon || facilityIcons[key] || "🏟️";
+  }
+
+  let facilities = [];
+
+  async function loadFacilities() {
+    facilities = await getActiveFacilities();
+    document.getElementById("stat-facilities").textContent = facilities.length;
+
+    const grid = document.getElementById("facilities-grid");
+    if (!facilities.length) {
+      grid.innerHTML = `<div class="es-state"><div class="es-state__icon">🏟️</div><p>Facilities will appear here as soon as they're added in the admin dashboard.</p></div>`;
+      return;
+    }
+    grid.innerHTML = facilities
+      .map(
+        (f) => `
+      <div class="es-facility-card">
+        <div class="es-facility-card__media" style="${f.imageUrl ? `background-image:url('${f.imageUrl}')` : ""}">${f.imageUrl ? "" : iconFor(f)}</div>
+        <div class="es-facility-card__body">
+          <h3 style="margin:0;">${f.name}</h3>
+          <p style="margin:0;font-size:0.9rem;">${f.description || ""}</p>
+          <div class="es-facility-card__meta">
+            <span>${f.openingTime}–${f.closingTime}</span>
+            <span>${f.slotIntervalMinutes || 30} min slots</span>
+          </div>
+          <div class="es-facility-card__footer">
+            <a href="/booking.html?facility=${f.id}" class="es-btn es-btn--ghost" style="padding:8px 18px;font-size:0.8rem;">View &amp; Book</a>
+          </div>
+        </div>
+      </div>`
+      )
+      .join("");
+
+    const sel = document.getElementById("qb-facility");
+    sel.innerHTML = facilities.map((f) => `<option value="${f.id}">${f.name}</option>`).join("");
+  }
+
+  async function loadOffers() {
+    const snap = await getDocs(query(collection(db, "offers"), where("active", "==", true)));
+    const offers = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    if (!offers.length) return;
+    document.getElementById("offers-preview-grid").innerHTML = offers
+      .slice(0, 3)
+      .map(
+        (o) => `
+        <div class="es-offer-card">
+          <span class="es-offer-card__badge">${o.type === "percentage" ? o.value + "% OFF" : o.type === "fixed" ? o.value + " BDT OFF" : "SPECIAL"}</span>
+          <h3 style="margin-bottom:4px;">${o.name}</h3>
+          <p style="margin:0;">${offerDescription(o)}</p>
+        </div>`
+      )
+      .join("");
+  }
+
+  function offerDescription(o) {
+    const days = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+    const dayLabel = Array.isArray(o.days) && o.days.length < 7 ? o.days.map((d) => days[d]).join(", ") : "Every day";
+    return `${dayLabel}${o.startTime != null ? ` · ${minutesToTimeStr(o.startTime)}–${minutesToTimeStr(o.endTime)}` : ""}`;
+  }
+
+  document.getElementById("qb-date").min = new Date().toISOString().slice(0, 10);
+  document.getElementById("qb-date").value = new Date().toISOString().slice(0, 10);
+
+  document.getElementById("qb-check").addEventListener("click", async () => {
+    const facilityId = document.getElementById("qb-facility").value;
+    const date = document.getElementById("qb-date").value;
+    const duration = Number(document.getElementById("qb-duration").value);
+    const facility = facilities.find((f) => f.id === facilityId);
+    const resultsEl = document.getElementById("qb-results");
+    if (!facility || !date) return;
+
+    resultsEl.innerHTML = `<div class="es-card es-mt-4"><p>Checking availability…</p></div>`;
+    const slots = await buildSlotGrid(facility, date, duration);
+    resultsEl.innerHTML = `
+      <div class="es-card es-mt-4">
+        <h3 style="margin-top:0;">${facility.name} — ${date}</h3>
+        <div class="es-slot-grid">
+          ${slots
+            .map(
+              (s) =>
+                `<a class="es-slot ${s.available ? "" : "is-unavailable"}" href="${
+                  s.available ? `/booking.html?facility=${facility.id}&date=${date}&start=${s.startMinutes}&duration=${duration}` : "#"
+                }">${s.label}</a>`
+            )
+            .join("")}
+        </div>
+      </div>`;
+  });
+
+  loadFacilities();
+  loadOffers();
+</script>
+</body>
+</html>

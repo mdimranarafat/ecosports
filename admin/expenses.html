@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Expenses — Eco Sports Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Work+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/global.css" />
+<link rel="stylesheet" href="/assets/css/admin.css" />
+<link rel="stylesheet" href="/assets/css/responsive.css" />
+</head>
+<body>
+<div class="es-admin-shell" id="es-admin-shell">
+  <div style="width:100%;">
+    <div class="es-topbar">
+      <h1 class="es-topbar__title">Expenses</h1>
+      <div class="es-topbar__actions"><button class="es-btn es-btn--primary" id="new-btn" style="padding:10px 18px;font-size:0.85rem;">+ Add Expense</button></div>
+    </div>
+
+    <div class="es-filterbar">
+      <div class="es-field"><label class="es-label">From</label><input class="es-input" type="date" id="f-start" /></div>
+      <div class="es-field"><label class="es-label">To</label><input class="es-input" type="date" id="f-end" /></div>
+      <div class="es-field"><label class="es-label">Facility</label><select class="es-select" id="f-facility"><option value="">All Facilities</option></select></div>
+      <button class="es-btn es-btn--ghost" id="filter-btn">Apply</button>
+    </div>
+
+    <div class="es-metrics-grid">
+      <div class="es-metric-card"><div class="es-metric-card__label">Total Expenses (range)</div><div class="es-metric-card__value" id="stat-total">—</div></div>
+      <div class="es-metric-card"><div class="es-metric-card__label">Top Category</div><div class="es-metric-card__value" style="font-size:1.3rem;" id="stat-top-cat">—</div></div>
+    </div>
+
+    <div class="es-panel">
+      <div class="es-panel__head"><h3>By Category</h3></div>
+      <canvas id="chart-category" height="90"></canvas>
+    </div>
+
+    <div class="es-table-wrap">
+      <table class="es-table">
+        <thead><tr><th>Date</th><th>Category</th><th>Facility</th><th>Description</th><th>Amount</th><th>Created By</th><th>Actions</th></tr></thead>
+        <tbody id="expenses-body"><tr><td colspan="7">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="es-modal-backdrop" id="expense-modal" style="display:none;">
+  <div class="es-modal">
+    <div class="es-modal__head"><h3 style="margin:0;">Add Expense</h3><button class="es-modal__close" id="modal-close">&times;</button></div>
+    <div class="es-flex es-gap-3">
+      <div class="es-field" style="flex:1;">
+        <label class="es-label">Category</label>
+        <select class="es-select" id="e-category">
+          <option>Rent</option><option>Salary</option><option>Electricity</option><option>Maintenance</option><option>Equipment</option><option>Marketing</option><option>Other</option>
+        </select>
+      </div>
+      <div class="es-field" style="flex:1;" id="custom-cat-wrap" style="display:none;"><label class="es-label">Custom Category</label><input class="es-input" id="e-custom-category" placeholder="Only if 'Other'" /></div>
+    </div>
+    <div class="es-flex es-gap-3">
+      <div class="es-field" style="flex:1;"><label class="es-label">Amount (BDT) *</label><input class="es-input" type="number" id="e-amount" /></div>
+      <div class="es-field" style="flex:1;"><label class="es-label">Date *</label><input class="es-input" type="date" id="e-date" /></div>
+    </div>
+    <div class="es-field"><label class="es-label">Facility (optional)</label><select class="es-select" id="e-facility"><option value="">Not facility-specific</option></select></div>
+    <div class="es-field"><label class="es-label">Description</label><textarea class="es-input" id="e-description" rows="2"></textarea></div>
+    <p id="modal-error" style="color:var(--es-red);font-size:0.85rem;display:none;"></p>
+    <button class="es-btn es-btn--primary es-btn--block" id="e-save">Save Expense</button>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<script type="module">
+  import { initAdminLayout, showToast } from "/assets/js/admin-layout.js";
+  import { addExpense, deleteExpense, listExpenses, sumExpenses, expensesByCategory, DEFAULT_CATEGORIES } from "/assets/js/expense-manager.js";
+  import { getAllFacilities } from "/assets/js/facility-manager.js";
+  import { formatCurrency, todayISO, addDaysISO } from "/assets/js/utils.js";
+
+  await initAdminLayout({ activePage: "expenses", permission: "expenses.manage" });
+
+  const facilities = await getAllFacilities();
+  const facOptions = facilities.map((f) => `<option value="${f.id}">${f.name}</option>`).join("");
+  document.getElementById("f-facility").innerHTML += facOptions;
+  document.getElementById("e-facility").innerHTML += facOptions;
+
+  const today = todayISO();
+  document.getElementById("f-start").value = addDaysISO(today, -30);
+  document.getElementById("f-end").value = today;
+  document.getElementById("e-date").value = today;
+
+  document.getElementById("e-category").addEventListener("change", (e) => {
+    document.getElementById("custom-cat-wrap").style.display = e.target.value === "Other" ? "block" : "none";
+  });
+
+  let categoryChart = null;
+
+  async function load() {
+    const start = document.getElementById("f-start").value;
+    const end = document.getElementById("f-end").value;
+    const facilityId = document.getElementById("f-facility").value || null;
+    const expenses = await listExpenses(start, end, facilityId);
+
+    document.getElementById("expenses-body").innerHTML = expenses.length
+      ? expenses.map((e) => `<tr>
+          <td data-label="Date">${e.date}</td>
+          <td data-label="Category">${e.category}</td>
+          <td data-label="Facility">${facilities.find((f) => f.id === e.facilityId)?.name || "—"}</td>
+          <td data-label="Description">${e.description || "—"}</td>
+          <td data-label="Amount">${formatCurrency(e.amount)}</td>
+          <td data-label="Created By">${e.createdByName || "—"}</td>
+          <td><button class="es-btn es-btn--sm es-btn--danger del-btn" data-id="${e.id}">Delete</button></td>
+        </tr>`).join("")
+      : `<tr><td colspan="7">No expenses in this range.</td></tr>`;
+
+    document.querySelectorAll(".del-btn").forEach((b) => b.addEventListener("click", async () => {
+      if (!confirm("Delete this expense?")) return;
+      await deleteExpense(b.dataset.id); showToast("Expense deleted"); load();
+    }));
+
+    const total = sumExpenses(expenses);
+    const byCat = expensesByCategory(expenses);
+    document.getElementById("stat-total").textContent = formatCurrency(total);
+    const topCat = Object.entries(byCat).sort((a, b) => b[1] - a[1])[0];
+    document.getElementById("stat-top-cat").textContent = topCat ? `${topCat[0]} (${formatCurrency(topCat[1])})` : "—";
+
+    const ctx = document.getElementById("chart-category");
+    if (categoryChart) categoryChart.destroy();
+    categoryChart = new Chart(ctx, {
+      type: "bar",
+      data: { labels: Object.keys(byCat), datasets: [{ label: "Expenses (BDT)", data: Object.values(byCat), backgroundColor: "#e6a817" }] },
+      options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } },
+    });
+  }
+
+  document.getElementById("filter-btn").addEventListener("click", load);
+  document.getElementById("new-btn").addEventListener("click", () => (document.getElementById("expense-modal").style.display = "flex"));
+  document.getElementById("modal-close").addEventListener("click", () => (document.getElementById("expense-modal").style.display = "none"));
+
+  document.getElementById("e-save").addEventListener("click", async () => {
+    const amount = document.getElementById("e-amount").value;
+    const date = document.getElementById("e-date").value;
+    if (!amount || !date) {
+      document.getElementById("modal-error").textContent = "Amount and date are required.";
+      document.getElementById("modal-error").style.display = "block";
+      return;
+    }
+    let category = document.getElementById("e-category").value;
+    if (category === "Other" && document.getElementById("e-custom-category").value.trim()) {
+      category = document.getElementById("e-custom-category").value.trim();
+    }
+    await addExpense({
+      category,
+      amount: Number(amount),
+      date,
+      facilityId: document.getElementById("e-facility").value || null,
+      description: document.getElementById("e-description").value.trim(),
+    });
+    document.getElementById("expense-modal").style.display = "none";
+    showToast("Expense added");
+    load();
+  });
+
+  await load();
+</script>
+</body>
+</html>

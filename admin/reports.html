@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Reports — Eco Sports Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Work+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/global.css" />
+<link rel="stylesheet" href="/assets/css/admin.css" />
+<link rel="stylesheet" href="/assets/css/responsive.css" />
+</head>
+<body>
+<div class="es-admin-shell" id="es-admin-shell">
+  <div style="width:100%;">
+    <div class="es-topbar"><h1 class="es-topbar__title">Reports &amp; CSV Export</h1></div>
+
+    <div class="es-panel">
+      <div class="es-panel__head"><h3>Date Range</h3></div>
+      <div class="es-filterbar" style="padding:0 0 var(--es-space-3) 0;">
+        <select class="es-select" id="preset">
+          <option value="today">Today</option>
+          <option value="yesterday">Yesterday</option>
+          <option value="thisWeek">This Week</option>
+          <option value="lastWeek">Last Week</option>
+          <option value="thisMonth" selected>This Month</option>
+          <option value="lastMonth">Last Month</option>
+          <option value="custom">Custom Range</option>
+        </select>
+        <div class="es-field" id="custom-start-wrap" style="display:none;"><input class="es-input" type="date" id="custom-start" /></div>
+        <div class="es-field" id="custom-end-wrap" style="display:none;"><input class="es-input" type="date" id="custom-end" /></div>
+      </div>
+    </div>
+
+    <div class="es-metrics-grid" id="report-cards"></div>
+  </div>
+</div>
+
+<script type="module">
+  import { initAdminLayout, showToast } from "/assets/js/admin-layout.js";
+  import {
+    exportBookingsCsv, exportRevenueCsv, exportCustomersCsv,
+    exportExpensesCsv, exportFacilityPerformanceCsv, exportPaymentReportCsv,
+  } from "/assets/js/csv-export.js";
+  import { getAllFacilities } from "/assets/js/facility-manager.js";
+
+  const { profile } = await initAdminLayout({ activePage: "reports", permission: "reports.export" });
+
+  const preset = document.getElementById("preset");
+  preset.addEventListener("change", () => {
+    const custom = preset.value === "custom";
+    document.getElementById("custom-start-wrap").style.display = custom ? "block" : "none";
+    document.getElementById("custom-end-wrap").style.display = custom ? "block" : "none";
+  });
+
+  function args() {
+    return [preset.value, document.getElementById("custom-start").value, document.getElementById("custom-end").value];
+  }
+
+  const REPORTS = [
+    { title: "Bookings CSV", desc: "Every booking in range with customer, facility, price, and payment fields.", fn: () => exportBookingsCsv(...args()) },
+    { title: "Revenue CSV", desc: "Confirmed & completed bookings — pricing, discount, and payment method breakdown.", fn: () => exportRevenueCsv(...args()) },
+    { title: "Customers CSV", desc: "Full customer database with lifetime spend and outstanding due.", fn: () => exportCustomersCsv() },
+    { title: "Expenses CSV", desc: "All logged expenses in range, by category and facility.", fn: () => exportExpensesCsv(...args()) },
+    { title: "Facility Performance CSV", desc: "Bookings, revenue, utilization %, and peak hour per facility.", fn: async () => exportFacilityPerformanceCsv(...args(), await getAllFacilities()) },
+    { title: "Payment Report CSV", desc: "Paid / due amounts and payment method per booking.", fn: () => exportPaymentReportCsv(...args()) },
+  ];
+
+  document.getElementById("report-cards").innerHTML = REPORTS.map(
+    (r, i) => `<div class="es-metric-card">
+      <div class="es-metric-card__label">${r.title}</div>
+      <p style="font-size:0.82rem;color:var(--es-moss);margin:8px 0 14px;">${r.desc}</p>
+      <button class="es-btn es-btn--primary es-btn--block" data-i="${i}">⇩ Export</button>
+    </div>`
+  ).join("");
+
+  document.querySelectorAll("#report-cards button").forEach((btn) =>
+    btn.addEventListener("click", async () => {
+      btn.disabled = true; btn.textContent = "Preparing…";
+      try {
+        await REPORTS[btn.dataset.i].fn();
+        showToast("CSV downloaded");
+      } catch (err) {
+        console.error(err);
+        showToast("Export failed — check console", "error");
+      } finally {
+        btn.disabled = false; btn.textContent = "⇩ Export";
+      }
+    })
+  );
+</script>
+</body>
+</html>

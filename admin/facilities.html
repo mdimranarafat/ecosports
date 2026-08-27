@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Facilities — Eco Sports Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Work+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/global.css" />
+<link rel="stylesheet" href="/assets/css/admin.css" />
+<link rel="stylesheet" href="/assets/css/responsive.css" />
+</head>
+<body>
+<div class="es-admin-shell" id="es-admin-shell">
+  <div style="width:100%;">
+    <div class="es-topbar">
+      <h1 class="es-topbar__title">Facilities</h1>
+      <div class="es-topbar__actions"><button class="es-btn es-btn--primary" id="new-btn" style="padding:10px 18px;font-size:0.85rem;">+ Add Facility</button></div>
+    </div>
+
+    <div class="es-table-wrap">
+      <table class="es-table">
+        <thead><tr><th>Order</th><th>Name</th><th>Hours</th><th>Slot Interval</th><th>Duration Range</th><th>Status</th><th>Actions</th></tr></thead>
+        <tbody id="facilities-body"><tr><td colspan="7">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="es-modal-backdrop" id="facility-modal" style="display:none;">
+  <div class="es-modal">
+    <div class="es-modal__head"><h3 id="modal-title" style="margin:0;">Add Facility</h3><button class="es-modal__close" id="modal-close">&times;</button></div>
+    <input type="hidden" id="f-id" />
+    <div class="es-flex es-gap-3">
+      <div class="es-field" style="flex:1;"><label class="es-label">Name *</label><input class="es-input" id="f-name" /></div>
+      <div class="es-field" style="flex:1;"><label class="es-label">Slug</label><input class="es-input" id="f-slug" placeholder="auto from name" /></div>
+    </div>
+    <div class="es-field"><label class="es-label">Description</label><textarea class="es-input" id="f-description" rows="2"></textarea></div>
+    <div class="es-flex es-gap-3">
+      <div class="es-field" style="flex:1;"><label class="es-label">Image URL (optional)</label><input class="es-input" id="f-image" placeholder="https://…" /></div>
+      <div class="es-field" style="flex:1;"><label class="es-label">Icon (emoji, optional)</label><input class="es-input" id="f-icon" placeholder="⚽" /></div>
+    </div>
+    <div class="es-flex es-gap-3">
+      <div class="es-field" style="flex:1;"><label class="es-label">Opening Time</label><input class="es-input" type="time" id="f-open" value="05:00" /></div>
+      <div class="es-field" style="flex:1;"><label class="es-label">Closing Time</label><input class="es-input" type="time" id="f-close" value="23:59" /></div>
+      <div class="es-field" style="flex:1;"><label class="es-label"><input type="checkbox" id="f-overnight" /> Allow Overnight</label></div>
+    </div>
+    <div class="es-flex es-gap-3">
+      <div class="es-field" style="flex:1;"><label class="es-label">Slot Interval (min)</label><input class="es-input" type="number" id="f-interval" value="30" /></div>
+      <div class="es-field" style="flex:1;"><label class="es-label">Min Duration (min)</label><input class="es-input" type="number" id="f-min" value="60" /></div>
+      <div class="es-field" style="flex:1;"><label class="es-label">Max Duration (min)</label><input class="es-input" type="number" id="f-max" value="180" /></div>
+    </div>
+    <div class="es-flex es-gap-3">
+      <div class="es-field" style="flex:1;"><label class="es-label">Display Order</label><input class="es-input" type="number" id="f-order" value="1" /></div>
+      <div class="es-field" style="flex:1;"><label class="es-label"><input type="checkbox" id="f-active" checked /> Active</label></div>
+    </div>
+    <p id="modal-error" style="color:var(--es-red);font-size:0.85rem;display:none;"></p>
+    <button class="es-btn es-btn--primary es-btn--block" id="f-save">Save Facility</button>
+  </div>
+</div>
+
+<script type="module">
+  import { initAdminLayout, showToast } from "/assets/js/admin-layout.js";
+  import { getAllFacilities, createFacility, updateFacility, setFacilityActive } from "/assets/js/facility-manager.js";
+
+  const { user } = await initAdminLayout({ activePage: "facilities", permission: "facilities.view" });
+
+  let facilities = [];
+
+  async function load() {
+    facilities = await getAllFacilities();
+    const body = document.getElementById("facilities-body");
+    if (!facilities.length) {
+      body.innerHTML = `<tr><td colspan="7"><div class="es-state"><div class="es-state__icon">🏟️</div><p>No facilities yet — add your first one above.</p></div></td></tr>`;
+      return;
+    }
+    body.innerHTML = facilities
+      .map(
+        (f) => `<tr>
+        <td data-label="Order">${f.displayOrder}</td>
+        <td data-label="Name">${f.name}</td>
+        <td data-label="Hours" class="es-mono">${f.openingTime}–${f.closingTime}</td>
+        <td data-label="Slot Interval">${f.slotIntervalMinutes} min</td>
+        <td data-label="Duration Range">${f.minDurationMinutes}–${f.maxDurationMinutes} min</td>
+        <td data-label="Status"><span class="es-badge es-badge--${f.active ? "paid" : "unpaid"}">${f.active ? "Active" : "Inactive"}</span></td>
+        <td data-label="Actions"><div class="es-table__actions">
+          <button class="es-icon-btn" data-action="edit" data-id="${f.id}" title="Edit">✎</button>
+          <button class="es-icon-btn" data-action="toggle" data-id="${f.id}" title="${f.active ? "Deactivate" : "Activate"}">${f.active ? "⏸" : "▶"}</button>
+        </div></td>
+      </tr>`
+      )
+      .join("");
+
+    body.querySelectorAll('[data-action="edit"]').forEach((b) => b.addEventListener("click", () => openModal(facilities.find((f) => f.id === b.dataset.id))));
+    body.querySelectorAll('[data-action="toggle"]').forEach((b) =>
+      b.addEventListener("click", async () => {
+        const f = facilities.find((x) => x.id === b.dataset.id);
+        await setFacilityActive(f.id, !f.active, user.uid);
+        showToast(`${f.name} ${f.active ? "deactivated" : "activated"}.`);
+        load();
+      })
+    );
+  }
+
+  const modal = document.getElementById("facility-modal");
+  function openModal(f = null) {
+    document.getElementById("modal-title").textContent = f ? "Edit Facility" : "Add Facility";
+    document.getElementById("f-id").value = f?.id || "";
+    document.getElementById("f-name").value = f?.name || "";
+    document.getElementById("f-slug").value = f?.slug || "";
+    document.getElementById("f-description").value = f?.description || "";
+    document.getElementById("f-image").value = f?.imageUrl || "";
+    document.getElementById("f-icon").value = f?.icon || "";
+    document.getElementById("f-open").value = f?.openingTime || "05:00";
+    document.getElementById("f-close").value = f?.closingTime || "23:59";
+    document.getElementById("f-overnight").checked = !!f?.allowOvernight;
+    document.getElementById("f-interval").value = f?.slotIntervalMinutes || 30;
+    document.getElementById("f-min").value = f?.minDurationMinutes || 60;
+    document.getElementById("f-max").value = f?.maxDurationMinutes || 180;
+    document.getElementById("f-order").value = f?.displayOrder || facilities.length + 1;
+    document.getElementById("f-active").checked = f ? f.active : true;
+    document.getElementById("modal-error").style.display = "none";
+    modal.style.display = "flex";
+  }
+
+  document.getElementById("new-btn").addEventListener("click", () => openModal());
+  document.getElementById("modal-close").addEventListener("click", () => (modal.style.display = "none"));
+
+  document.getElementById("f-save").addEventListener("click", async () => {
+    const errorEl = document.getElementById("modal-error");
+    const name = document.getElementById("f-name").value.trim();
+    if (!name) { errorEl.textContent = "Facility name is required."; errorEl.style.display = "block"; return; }
+
+    const data = {
+      name,
+      slug: document.getElementById("f-slug").value.trim() || name.toLowerCase().replace(/\s+/g, "-"),
+      description: document.getElementById("f-description").value.trim(),
+      imageUrl: document.getElementById("f-image").value.trim(),
+      icon: document.getElementById("f-icon").value.trim(),
+      openingTime: document.getElementById("f-open").value,
+      closingTime: document.getElementById("f-close").value,
+      allowOvernight: document.getElementById("f-overnight").checked,
+      slotIntervalMinutes: Number(document.getElementById("f-interval").value),
+      minDurationMinutes: Number(document.getElementById("f-min").value),
+      maxDurationMinutes: Number(document.getElementById("f-max").value),
+      displayOrder: Number(document.getElementById("f-order").value),
+      active: document.getElementById("f-active").checked,
+    };
+
+    try {
+      const id = document.getElementById("f-id").value;
+      if (id) await updateFacility(id, data, user.uid);
+      else await createFacility(data, user.uid);
+      showToast("Facility saved.");
+      modal.style.display = "none";
+      load();
+    } catch (err) {
+      errorEl.textContent = "Could not save facility. " + (err.message || "");
+      errorEl.style.display = "block";
+    }
+  });
+
+  load();
+</script>
+</body>
+</html>

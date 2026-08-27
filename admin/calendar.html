@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Calendar — Eco Sports Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Work+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/global.css" />
+<link rel="stylesheet" href="/assets/css/admin.css" />
+<link rel="stylesheet" href="/assets/css/responsive.css" />
+</head>
+<body>
+<div class="es-admin-shell" id="es-admin-shell">
+  <div style="width:100%;">
+    <div class="es-topbar">
+      <h1 class="es-topbar__title">Calendar</h1>
+      <div class="es-topbar__actions">
+        <select class="es-select" id="c-view" style="width:120px;"><option value="week">Week</option><option value="month">Month</option><option value="day">Day</option></select>
+        <select class="es-select" id="c-facility" style="width:160px;"><option value="">All Facilities</option></select>
+        <button class="es-btn es-btn--ghost" id="c-prev" style="padding:8px 14px;">&larr;</button>
+        <span id="c-range-label" class="es-mono" style="min-width:140px;text-align:center;display:inline-block;"></span>
+        <button class="es-btn es-btn--ghost" id="c-next" style="padding:8px 14px;">&rarr;</button>
+        <button class="es-btn es-btn--ghost" id="c-today" style="padding:8px 14px;">Today</button>
+      </div>
+    </div>
+
+    <div class="es-panel">
+      <div class="es-calendar" id="calendar-grid"><div class="es-state">Loading…</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- Booking detail modal -->
+<div class="es-modal-backdrop" id="detail-modal" style="display:none;">
+  <div class="es-modal">
+    <div class="es-modal__head"><h3 style="margin:0;">Booking Details</h3><button class="es-modal__close" id="detail-close">&times;</button></div>
+    <div id="detail-body"></div>
+  </div>
+</div>
+
+<script type="module">
+  import { initAdminLayout, showToast } from "/assets/js/admin-layout.js";
+  import { getActiveFacilities } from "/assets/js/facility-manager.js";
+  import { db } from "/assets/js/firebase-config.js";
+  import { collection, getDocs, query, where, orderBy } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+  import { minutesToTimeStr } from "/assets/js/utils.js";
+  import { setBookingStatus } from "/assets/js/booking-engine.js";
+
+  const { user, profile } = await initAdminLayout({ activePage: "calendar", permission: "bookings.view" });
+  const canEdit = profile.role === "super_admin" || profile.permissions?.["bookings.edit"];
+
+  const facilities = await getActiveFacilities();
+  document.getElementById("c-facility").innerHTML += facilities.map((f) => `<option value="${f.id}">${f.name}</option>`).join("");
+
+  let view = "week";
+  let anchor = new Date();
+
+  function isoOf(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; }
+
+  function rangeForView() {
+    if (view === "day") return [new Date(anchor), new Date(anchor)];
+    if (view === "week") {
+      const start = new Date(anchor); start.setDate(start.getDate() - start.getDay());
+      const end = new Date(start); end.setDate(end.getDate() + 6);
+      return [start, end];
+    }
+    // month
+    const start = new Date(anchor.getFullYear(), anchor.getMonth(), 1);
+    const end = new Date(anchor.getFullYear(), anchor.getMonth() + 1, 0);
+    return [start, end];
+  }
+
+  async function render() {
+    const [start, end] = rangeForView();
+    document.getElementById("c-range-label").textContent = `${isoOf(start)} → ${isoOf(end)}`;
+
+    const facilityId = document.getElementById("c-facility").value;
+    let q = query(collection(db, "bookings"), where("date", ">=", isoOf(start)), where("date", "<=", isoOf(end)), orderBy("date"));
+    const snap = await getDocs(q);
+    let bookings = snap.docs.map((d) => ({ id: d.id, ...d.data() })).filter((b) => b.status !== "cancelled" && b.status !== "rejected");
+    if (facilityId) bookings = bookings.filter((b) => b.facilityId === facilityId);
+
+    const days = [];
+    const cursor = new Date(start);
+    while (cursor <= end) { days.push(new Date(cursor)); cursor.setDate(cursor.getDate() + 1); }
+
+    const grid = document.getElementById("calendar-grid");
+    grid.innerHTML = days
+      .map((d) => {
+        const iso = isoOf(d);
+        const dayBookings = bookings.filter((b) => b.date === iso).sort((a,b) => a.startMinutes - b.startMinutes);
+        return `<div class="es-calendar__cell">
+          <div class="es-calendar__cell-date">${d.toLocaleDateString("en-GB",{weekday:"short",day:"numeric"})}</div>
+          ${dayBookings.map((b) => `<div class="es-calendar__booking" data-id="${b.id}" title="${b.customerName} — ${b.facilityName}">${minutesToTimeStr(b.startMinutes)} ${b.facilityName} — ${b.customerName}</div>`).join("")}
+        </div>`;
+      })
+      .join("");
+
+    grid.querySelectorAll(".es-calendar__booking").forEach((el) => {
+      el.addEventListener("click", () => openDetail(bookings.find((b) => b.id === el.dataset.id)));
+    });
+  }
+
+  function openDetail(b) {
+    if (!b) return;
+    document.getElementById("detail-body").innerHTML = `
+      <div class="es-summary-row"><span>Booking ID</span><span class="es-mono">${b.bookingId}</span></div>
+      <div class="es-summary-row"><span>Customer</span><span>${b.customerName} (${b.customerPhone})</span></div>
+      <div class="es-summary-row"><span>Facility</span><span>${b.facilityName}</span></div>
+      <div class="es-summary-row"><span>Time</span><span class="es-mono">${b.date} ${minutesToTimeStr(b.startMinutes)}–${minutesToTimeStr(b.endMinutes)}</span></div>
+      <div class="es-summary-row"><span>Status</span><span class="es-status-pill es-status-pill--${b.status}">${b.status}</span></div>
+      <div class="es-summary-row es-summary-row--total"><span>Total</span><span>${b.finalPrice} BDT</span></div>
+      ${canEdit ? `<div class="es-flex es-gap-2 es-mt-4">
+        ${b.status !== "completed" ? `<button class="es-btn es-btn--ghost" data-status="completed">Mark Completed</button>` : ""}
+        ${b.status !== "cancelled" ? `<button class="es-btn es-btn--ghost" data-status="cancelled">Cancel</button>` : ""}
+      </div>` : ""}
+      <p style="font-size:0.85rem;margin-top:12px;"><a href="/admin/bookings.html">Full edit options in Bookings →</a></p>`;
+
+    document.querySelectorAll("[data-status]").forEach((btn) =>
+      btn.addEventListener("click", async () => {
+        try {
+          await setBookingStatus(b.id, btn.dataset.status, user.uid);
+          showToast("Booking updated.");
+          document.getElementById("detail-modal").style.display = "none";
+          render();
+        } catch (err) { showToast(err.message, "error"); }
+      })
+    );
+    document.getElementById("detail-modal").style.display = "flex";
+  }
+
+  document.getElementById("detail-close").addEventListener("click", () => (document.getElementById("detail-modal").style.display = "none"));
+  document.getElementById("c-view").addEventListener("change", (e) => { view = e.target.value; render(); });
+  document.getElementById("c-facility").addEventListener("change", render);
+  document.getElementById("c-today").addEventListener("click", () => { anchor = new Date(); render(); });
+  document.getElementById("c-prev").addEventListener("click", () => { shiftAnchor(-1); render(); });
+  document.getElementById("c-next").addEventListener("click", () => { shiftAnchor(1); render(); });
+
+  function shiftAnchor(dir) {
+    if (view === "day") anchor.setDate(anchor.getDate() + dir);
+    else if (view === "week") anchor.setDate(anchor.getDate() + dir * 7);
+    else anchor.setMonth(anchor.getMonth() + dir);
+  }
+
+  render();
+</script>
+</body>
+</html>

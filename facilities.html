@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Facilities — Eco Sports</title>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Work+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/global.css" />
+<link rel="stylesheet" href="/assets/css/public.css" />
+<link rel="stylesheet" href="/assets/css/responsive.css" />
+</head>
+<body data-page="facilities">
+<div id="es-header-slot"></div>
+
+<section class="es-section" style="padding-top:var(--es-space-6);">
+  <div class="es-container">
+    <div class="es-eyebrow">All Facilities</div>
+    <h1>Every Way To Play</h1>
+    <p style="max-width:560px;">Filter by sport, check today's opening hours, and jump straight into booking. New facilities appear here the moment our team adds them — nothing is ever hardcoded.</p>
+
+    <div class="es-filterbar es-mt-4">
+      <input class="es-input es-search" id="filter-search" placeholder="Search facilities…" />
+      <select class="es-select" id="filter-status">
+        <option value="all">All Facilities</option>
+        <option value="open">Open Now</option>
+      </select>
+    </div>
+
+    <div class="es-grid" id="facilities-grid">
+      <div class="es-state"><div class="es-skeleton" style="height:220px;"></div></div>
+    </div>
+  </div>
+</section>
+
+<div id="es-footer-slot"></div>
+
+<script type="module">
+  import { initLayout } from "/assets/js/layout.js";
+  import { getActiveFacilities } from "/assets/js/facility-manager.js";
+  import { timeStrToMinutes } from "/assets/js/utils.js";
+  initLayout();
+
+  let all = [];
+
+  function isOpenNow(f) {
+    const now = new Date();
+    const mins = now.getHours() * 60 + now.getMinutes();
+    const open = timeStrToMinutes(f.openingTime);
+    let close = timeStrToMinutes(f.closingTime);
+    if (f.allowOvernight && close <= open) close += 1440;
+    return mins >= open && mins < close;
+  }
+
+  function render() {
+    const term = document.getElementById("filter-search").value.toLowerCase();
+    const status = document.getElementById("filter-status").value;
+    let rows = all.filter((f) => f.name.toLowerCase().includes(term));
+    if (status === "open") rows = rows.filter(isOpenNow);
+
+    const grid = document.getElementById("facilities-grid");
+    if (!rows.length) {
+      grid.innerHTML = `<div class="es-state"><div class="es-state__icon">🔍</div><p>No facilities match your filters.</p></div>`;
+      return;
+    }
+    grid.innerHTML = rows
+      .map(
+        (f) => `
+      <div class="es-facility-card">
+        <div class="es-facility-card__media" style="${f.imageUrl ? `background-image:url('${f.imageUrl}')` : ""}">${f.imageUrl ? "" : "🏟️"}</div>
+        <div class="es-facility-card__body">
+          <h3 style="margin:0;">${f.name}</h3>
+          <p style="margin:0;font-size:0.9rem;">${f.description || ""}</p>
+          <div class="es-facility-card__meta">
+            <span>${f.openingTime}–${f.closingTime}</span>
+            <span style="color:${isOpenNow(f) ? "var(--es-lime)" : "var(--es-red)"}">${isOpenNow(f) ? "Open now" : "Closed"}</span>
+          </div>
+          <div class="es-facility-card__footer">
+            <a href="/booking.html?facility=${f.id}" class="es-btn es-btn--ghost" style="padding:8px 18px;font-size:0.8rem;">View &amp; Book</a>
+          </div>
+        </div>
+      </div>`
+      )
+      .join("");
+  }
+
+  getActiveFacilities().then((f) => { all = f; render(); });
+  document.getElementById("filter-search").addEventListener("input", render);
+  document.getElementById("filter-status").addEventListener("change", render);
+</script>
+</body>
+</html>

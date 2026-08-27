@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Offers — Eco Sports</title>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Work+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/global.css" />
+<link rel="stylesheet" href="/assets/css/public.css" />
+<link rel="stylesheet" href="/assets/css/responsive.css" />
+</head>
+<body data-page="offers">
+<div id="es-header-slot"></div>
+
+<section class="es-section" style="padding-top:var(--es-space-6);">
+  <div class="es-container">
+    <div class="es-eyebrow">Offers &amp; Promotions</div>
+    <h1>Play More, Pay Less</h1>
+    <p style="max-width:560px;">Every offer below is applied automatically at checkout when your booking qualifies — no codes to remember unless noted.</p>
+
+    <div class="es-grid es-mt-4" id="offers-grid">
+      <div class="es-state"><div class="es-skeleton" style="height:140px;"></div></div>
+    </div>
+  </div>
+</section>
+
+<div id="es-footer-slot"></div>
+
+<script type="module">
+  import { initLayout } from "/assets/js/layout.js";
+  import { db } from "/assets/js/firebase-config.js";
+  import { minutesToTimeStr } from "/assets/js/utils.js";
+  import { collection, getDocs, query, where } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+  initLayout();
+
+  const DAY_LABELS = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+
+  function typeLabel(o) {
+    if (o.type === "percentage") return `${o.value}% OFF`;
+    if (o.type === "fixed") return `${o.value} BDT OFF`;
+    if (o.type === "special_price") return `Flat ${o.value} BDT`;
+    if (o.type === "buyx") return "Bonus Discount";
+    return "OFFER";
+  }
+
+  function describe(o) {
+    const dayLabel = Array.isArray(o.days) && o.days.length < 7 ? o.days.map((d) => DAY_LABELS[d]).join(", ") : "Every day";
+    const timeLabel = o.startTime != null ? ` · ${minutesToTimeStr(o.startTime)}–${minutesToTimeStr(o.endTime)}` : "";
+    const codeLabel = o.code ? ` · Code: ${o.code}` : "";
+    return `${dayLabel}${timeLabel}${codeLabel}`;
+  }
+
+  async function load() {
+    const snap = await getDocs(query(collection(db, "offers"), where("active", "==", true)));
+    const offers = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    const grid = document.getElementById("offers-grid");
+    if (!offers.length) {
+      grid.innerHTML = `<div class="es-state"><div class="es-state__icon">🏷️</div><p>No active offers right now — check back soon, or book at standard pricing today.</p></div>`;
+      return;
+    }
+    grid.innerHTML = offers
+      .map(
+        (o) => `
+      <div class="es-offer-card">
+        <span class="es-offer-card__badge">${typeLabel(o)}</span>
+        <h3 style="margin-bottom:6px;">${o.name}</h3>
+        <p style="margin:0 0 12px;">${describe(o)}</p>
+        <a href="/booking.html" class="es-btn es-btn--ghost" style="padding:8px 18px;font-size:0.8rem;">Book &amp; Save</a>
+      </div>`
+      )
+      .join("");
+  }
+
+  load();
+</script>
+</body>
+</html>

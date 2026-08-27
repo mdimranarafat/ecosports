@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Audit Logs — Eco Sports Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Work+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/global.css" />
+<link rel="stylesheet" href="/assets/css/admin.css" />
+<link rel="stylesheet" href="/assets/css/responsive.css" />
+</head>
+<body>
+<div class="es-admin-shell" id="es-admin-shell">
+  <div style="width:100%;">
+    <div class="es-topbar"><h1 class="es-topbar__title">Audit Logs</h1></div>
+
+    <div class="es-filterbar">
+      <select class="es-select" id="f-entity">
+        <option value="">All Entity Types</option>
+        <option value="booking">Booking</option>
+        <option value="facility">Facility</option>
+        <option value="pricingRule">Pricing Rule</option>
+        <option value="offer">Offer</option>
+        <option value="expense">Expense</option>
+        <option value="user">Staff / User</option>
+        <option value="settings">Settings</option>
+      </select>
+      <input class="es-input" id="f-search" placeholder="Search action or entity ID…" style="min-width:220px;" />
+    </div>
+
+    <div class="es-table-wrap">
+      <table class="es-table">
+        <thead><tr><th>Time</th><th>Action</th><th>Entity</th><th>Performed By</th><th>Detail</th></tr></thead>
+        <tbody id="logs-body"><tr><td colspan="5">Loading…</td></tr></tbody>
+      </table>
+      <div class="es-pagination">
+        <span id="row-count"></span>
+        <button class="es-btn es-btn--ghost" id="load-more" style="display:none;">Load More</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import { initAdminLayout } from "/assets/js/admin-layout.js";
+  import { listAuditLogs } from "/assets/js/reports.js";
+
+  await initAdminLayout({ activePage: "audit-logs", permission: "audit.view" });
+
+  let cursor = null;
+  let allRows = [];
+
+  function row(l) {
+    const time = l.timestamp?.toDate ? l.timestamp.toDate().toLocaleString() : "—";
+    const detail = l.newSummary || l.previousSummary || "—";
+    return `<tr>
+      <td data-label="Time" class="es-mono">${time}</td>
+      <td data-label="Action">${l.action}</td>
+      <td data-label="Entity">${l.entityType} · <span class="es-mono" style="font-size:0.75rem;color:var(--es-moss);">${l.entityId}</span></td>
+      <td data-label="Performed By">${l.performedByName || l.performedBy}</td>
+      <td data-label="Detail" style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${(detail + "").replace(/"/g, "&quot;")}">${detail}</td>
+    </tr>`;
+  }
+
+  function render() {
+    const entityFilter = document.getElementById("f-entity").value;
+    const search = document.getElementById("f-search").value.toLowerCase();
+    const filtered = allRows.filter((l) =>
+      (!entityFilter || l.entityType === entityFilter) &&
+      (!search || l.action.toLowerCase().includes(search) || (l.entityId || "").toLowerCase().includes(search))
+    );
+    document.getElementById("logs-body").innerHTML = filtered.length ? filtered.map(row).join("") : `<tr><td colspan="5">No matching audit entries.</td></tr>`;
+    document.getElementById("row-count").textContent = `${filtered.length} of ${allRows.length} loaded`;
+  }
+
+  async function loadPage() {
+    const { rows, cursor: next, hasMore } = await listAuditLogs({ pageSize: 50, cursor });
+    allRows = allRows.concat(rows);
+    cursor = next;
+    document.getElementById("load-more").style.display = hasMore ? "inline-flex" : "none";
+    render();
+  }
+
+  document.getElementById("f-entity").addEventListener("change", render);
+  document.getElementById("f-search").addEventListener("input", render);
+  document.getElementById("load-more").addEventListener("click", loadPage);
+
+  await loadPage();
+</script>
+</body>
+</html>

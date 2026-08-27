@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Pricing Rules — Eco Sports Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Work+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/global.css" />
+<link rel="stylesheet" href="/assets/css/admin.css" />
+<link rel="stylesheet" href="/assets/css/responsive.css" />
+</head>
+<body>
+<div class="es-admin-shell" id="es-admin-shell">
+  <div style="width:100%;">
+    <div class="es-topbar">
+      <h1 class="es-topbar__title">Pricing Rules</h1>
+      <div class="es-topbar__actions">
+        <select class="es-select" id="filter-facility" style="width:180px;"></select>
+        <button class="es-btn es-btn--primary" id="new-btn" style="padding:10px 18px;font-size:0.85rem;">+ New Rule</button>
+      </div>
+    </div>
+
+    <div class="es-panel">
+      <div class="es-panel__head"><h3>Price Rounding</h3></div>
+      <div class="es-flex es-gap-3" style="align-items:end;">
+        <div class="es-field" style="flex:1;"><label class="es-label">Rounding Mode</label>
+          <select class="es-select" id="round-mode">
+            <option value="none">No Rounding</option><option value="nearest10">Nearest 10</option>
+            <option value="nearest50">Nearest 50</option><option value="nearest100">Nearest 100</option>
+            <option value="down">Round Down</option><option value="up">Round Up</option><option value="custom">Custom Increment</option>
+          </select>
+        </div>
+        <div class="es-field" style="flex:1;"><label class="es-label">Custom Increment</label><input class="es-input" type="number" id="round-increment" value="10" /></div>
+        <button class="es-btn es-btn--ghost" id="round-save" style="height:48px;">Save</button>
+      </div>
+    </div>
+
+    <div class="es-table-wrap">
+      <table class="es-table">
+        <thead><tr><th>Facility</th><th>Days</th><th>Time Window</th><th>Price</th><th>Weekend Adj.</th><th>Priority</th><th>Status</th><th>Actions</th></tr></thead>
+        <tbody id="rules-body"><tr><td colspan="8">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="es-modal-backdrop" id="rule-modal" style="display:none;">
+  <div class="es-modal">
+    <div class="es-modal__head"><h3 style="margin:0;">Pricing Rule</h3><button class="es-modal__close" id="modal-close">&times;</button></div>
+    <input type="hidden" id="r-id" />
+    <div class="es-field"><label class="es-label">Facility *</label><select class="es-select" id="r-facility"></select></div>
+    <div class="es-field">
+      <label class="es-label">Days</label>
+      <div class="es-flex es-gap-2" id="r-days"></div>
+    </div>
+    <div class="es-flex es-gap-3">
+      <div class="es-field" style="flex:1;"><label class="es-label">Start Time</label><input class="es-input" type="time" id="r-start" value="05:00" /></div>
+      <div class="es-field" style="flex:1;"><label class="es-label">End Time</label><input class="es-input" type="time" id="r-end" value="17:00" /></div>
+    </div>
+    <div class="es-field"><label class="es-label">Price Per Hour (BDT) *</label><input class="es-input" type="number" id="r-perhour" /></div>
+    <div class="es-field">
+      <label class="es-label">Optional Fixed Duration Prices (BDT) — leave blank to use per-hour rate</label>
+      <div class="es-flex es-gap-3">
+        <div style="flex:1;"><label class="es-label">60 min</label><input class="es-input" type="number" id="r-d60" /></div>
+        <div style="flex:1;"><label class="es-label">90 min</label><input class="es-input" type="number" id="r-d90" /></div>
+        <div style="flex:1;"><label class="es-label">120 min</label><input class="es-input" type="number" id="r-d120" /></div>
+      </div>
+    </div>
+    <div class="es-flex es-gap-3">
+      <div class="es-field" style="flex:1;"><label class="es-label">Weekend Adjustment % (applies on Fri/Sat)</label><input class="es-input" type="number" id="r-weekend" placeholder="e.g. 25" /></div>
+      <div class="es-field" style="flex:1;"><label class="es-label">Priority (1–100)</label><input class="es-input" type="number" id="r-priority" value="1" min="1" max="100" /></div>
+    </div>
+    <div class="es-field"><label class="es-label"><input type="checkbox" id="r-active" checked /> Active</label></div>
+    <p id="modal-error" style="color:var(--es-red);font-size:0.85rem;display:none;"></p>
+    <button class="es-btn es-btn--primary es-btn--block" id="r-save">Save Rule</button>
+  </div>
+</div>
+
+<script type="module">
+  import { initAdminLayout, showToast } from "/assets/js/admin-layout.js";
+  import { getActiveFacilities } from "/assets/js/facility-manager.js";
+  import { listPricingRules, createPricingRule, updatePricingRule, setPricingRuleActive, deletePricingRule } from "/assets/js/pricing-engine.js";
+  import { getBusinessSettings, updateBusinessSettings } from "/assets/js/settings-manager.js";
+  import { timeStrToMinutes, minutesToTimeStr } from "/assets/js/utils.js";
+
+  await initAdminLayout({ activePage: "pricing", permission: "pricing.manage" });
+
+  const DAY_LABELS = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+  const facilities = await getActiveFacilities();
+  let rules = [];
+
+  document.getElementById("filter-facility").innerHTML = `<option value="">All Facilities</option>` + facilities.map((f) => `<option value="${f.id}">${f.name}</option>`).join("");
+  document.getElementById("r-facility").innerHTML = facilities.map((f) => `<option value="${f.id}">${f.name}</option>`).join("");
+  document.getElementById("r-days").innerHTML = DAY_LABELS.map((d, i) => `<label style="font-size:0.8rem;"><input type="checkbox" value="${i}" class="r-day" checked /> ${d}</label>`).join("");
+
+  const settings = await getBusinessSettings();
+  document.getElementById("round-mode").value = settings.roundingMode;
+  document.getElementById("round-increment").value = settings.roundingIncrement;
+
+  document.getElementById("round-save").addEventListener("click", async () => {
+    await updateBusinessSettings({ roundingMode: document.getElementById("round-mode").value, roundingIncrement: Number(document.getElementById("round-increment").value) });
+    showToast("Rounding settings saved.");
+  });
+
+  async function load() {
+    rules = await listPricingRules();
+    render();
+  }
+
+  function facilityName(id) { return facilities.find((f) => f.id === id)?.name || "Unknown"; }
+
+  function render() {
+    const filterId = document.getElementById("filter-facility").value;
+    const rows = filterId ? rules.filter((r) => r.facilityId === filterId) : rules;
+    const body = document.getElementById("rules-body");
+    if (!rows.length) {
+      body.innerHTML = `<tr><td colspan="8"><div class="es-state"><div class="es-state__icon">৳</div><p>No pricing rules yet. Bookings for this facility can't be completed until pricing is configured.</p></div></td></tr>`;
+      return;
+    }
+    body.innerHTML = rows
+      .sort((a, b) => (b.priority || 1) - (a.priority || 1))
+      .map(
+        (r) => `<tr>
+        <td data-label="Facility">${facilityName(r.facilityId)}</td>
+        <td data-label="Days">${(r.days || []).map((d) => DAY_LABELS[d]).join(", ")}</td>
+        <td data-label="Time Window" class="es-mono">${minutesToTimeStr(r.startMinutes)}–${minutesToTimeStr(r.endMinutes)}</td>
+        <td data-label="Price" class="es-mono">${r.pricePerHour ? r.pricePerHour + "/hr" : "custom"}</td>
+        <td data-label="Weekend Adj.">${r.weekendAdjustPercent ? "+" + r.weekendAdjustPercent + "%" : "—"}</td>
+        <td data-label="Priority">${r.priority}</td>
+        <td data-label="Status"><span class="es-badge es-badge--${r.active ? "paid" : "unpaid"}">${r.active ? "Active" : "Inactive"}</span></td>
+        <td data-label="Actions"><div class="es-table__actions">
+          <button class="es-icon-btn" data-action="edit" data-id="${r.id}">✎</button>
+          <button class="es-icon-btn" data-action="toggle" data-id="${r.id}">${r.active ? "⏸" : "▶"}</button>
+          <button class="es-icon-btn" data-action="delete" data-id="${r.id}">🗑</button>
+        </div></td>
+      </tr>`
+      )
+      .join("");
+
+    body.querySelectorAll('[data-action="edit"]').forEach((b) => b.addEventListener("click", () => openModal(rules.find((r) => r.id === b.dataset.id))));
+    body.querySelectorAll('[data-action="toggle"]').forEach((b) =>
+      b.addEventListener("click", async () => {
+        const r = rules.find((x) => x.id === b.dataset.id);
+        await setPricingRuleActive(r.id, !r.active);
+        showToast("Rule updated.");
+        load();
+      })
+    );
+    body.querySelectorAll('[data-action="delete"]').forEach((b) =>
+      b.addEventListener("click", async () => {
+        if (!confirm("Delete this pricing rule?")) return;
+        await deletePricingRule(b.dataset.id);
+        showToast("Rule deleted.");
+        load();
+      })
+    );
+  }
+
+  const modal = document.getElementById("rule-modal");
+  function openModal(r = null) {
+    document.getElementById("r-id").value = r?.id || "";
+    document.getElementById("r-facility").value = r?.facilityId || facilities[0]?.id || "";
+    document.querySelectorAll(".r-day").forEach((cb) => (cb.checked = r ? r.days.includes(Number(cb.value)) : true));
+    document.getElementById("r-start").value = r ? minutesToTimeStr(r.startMinutes).replace(" (+1)","") : "05:00";
+    document.getElementById("r-end").value = r ? minutesToTimeStr(r.endMinutes).replace(" (+1)","") : "17:00";
+    document.getElementById("r-perhour").value = r?.pricePerHour || "";
+    document.getElementById("r-d60").value = r?.durationPrices?.["60"] || "";
+    document.getElementById("r-d90").value = r?.durationPrices?.["90"] || "";
+    document.getElementById("r-d120").value = r?.durationPrices?.["120"] || "";
+    document.getElementById("r-weekend").value = r?.weekendAdjustPercent || "";
+    document.getElementById("r-priority").value = r?.priority || 1;
+    document.getElementById("r-active").checked = r ? r.active : true;
+    document.getElementById("modal-error").style.display = "none";
+    modal.style.display = "flex";
+  }
+
+  document.getElementById("new-btn").addEventListener("click", () => openModal());
+  document.getElementById("modal-close").addEventListener("click", () => (modal.style.display = "none"));
+  document.getElementById("filter-facility").addEventListener("change", render);
+
+  document.getElementById("r-save").addEventListener("click", async () => {
+    const errorEl = document.getElementById("modal-error");
+    const days = [...document.querySelectorAll(".r-day:checked")].map((cb) => Number(cb.value));
+    const perHour = document.getElementById("r-perhour").value;
+    if (!days.length) { errorEl.textContent = "Select at least one day."; errorEl.style.display = "block"; return; }
+    if (!perHour) { errorEl.textContent = "Per-hour price is required (used as fallback for any duration without a fixed price)."; errorEl.style.display = "block"; return; }
+
+    const durationPrices = {};
+    if (document.getElementById("r-d60").value) durationPrices["60"] = Number(document.getElementById("r-d60").value);
+    if (document.getElementById("r-d90").value) durationPrices["90"] = Number(document.getElementById("r-d90").value);
+    if (document.getElementById("r-d120").value) durationPrices["120"] = Number(document.getElementById("r-d120").value);
+
+    const data = {
+      facilityId: document.getElementById("r-facility").value,
+      days,
+      startMinutes: timeStrToMinutes(document.getElementById("r-start").value),
+      endMinutes: timeStrToMinutes(document.getElementById("r-end").value),
+      pricePerHour: Number(perHour),
+      durationPrices,
+      weekendAdjustPercent: document.getElementById("r-weekend").value ? Number(document.getElementById("r-weekend").value) : null,
+      priority: Number(document.getElementById("r-priority").value),
+      active: document.getElementById("r-active").checked,
+    };
+
+    try {
+      const id = document.getElementById("r-id").value;
+      if (id) await updatePricingRule(id, data);
+      else await createPricingRule(data);
+      showToast("Pricing rule saved.");
+      modal.style.display = "none";
+      load();
+    } catch (err) {
+      errorEl.textContent = "Could not save rule.";
+      errorEl.style.display = "block";
+    }
+  });
+
+  load();
+</script>
+</body>
+</html>

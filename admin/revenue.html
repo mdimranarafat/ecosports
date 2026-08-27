@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Revenue &amp; Growth — Eco Sports Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Work+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/global.css" />
+<link rel="stylesheet" href="/assets/css/admin.css" />
+<link rel="stylesheet" href="/assets/css/responsive.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+</head>
+<body>
+<div class="es-admin-shell" id="es-admin-shell">
+  <div style="width:100%;">
+    <div class="es-topbar">
+      <h1 class="es-topbar__title">Revenue &amp; Growth</h1>
+      <div class="es-topbar__actions">
+        <input class="es-input" type="date" id="range-start" style="width:150px;" />
+        <input class="es-input" type="date" id="range-end" style="width:150px;" />
+        <button class="es-btn es-btn--ghost" id="range-btn">Apply</button>
+      </div>
+    </div>
+
+    <div class="es-metrics-grid">
+      <div class="es-metric-card"><div class="es-metric-card__label">Today vs Yesterday</div><div class="es-metric-card__value" id="g-today">—</div><div class="es-metric-card__delta" id="g-today-d"></div></div>
+      <div class="es-metric-card"><div class="es-metric-card__label">This Week vs Last Week</div><div class="es-metric-card__value" id="g-week">—</div><div class="es-metric-card__delta" id="g-week-d"></div></div>
+      <div class="es-metric-card"><div class="es-metric-card__label">This Month vs Last Month</div><div class="es-metric-card__value" id="g-month">—</div><div class="es-metric-card__delta" id="g-month-d"></div></div>
+      <div class="es-metric-card"><div class="es-metric-card__label">Booking Growth (MoM)</div><div class="es-metric-card__value" id="g-bookings">—</div></div>
+    </div>
+
+    <div class="es-panel">
+      <div class="es-panel__head"><h3>Custom Range Summary</h3></div>
+      <div class="es-metrics-grid" id="range-summary">
+        <div class="es-metric-card"><div class="es-skeleton" style="height:60px;"></div></div>
+      </div>
+    </div>
+
+    <div class="es-charts-grid">
+      <div class="es-panel"><div class="es-panel__head"><h3>Completed vs Cancelled Trend</h3></div><canvas id="chart-trend" height="110"></canvas></div>
+      <div class="es-panel"><div class="es-panel__head"><h3>New vs Returning Customers</h3></div><canvas id="chart-customers" height="110"></canvas></div>
+    </div>
+
+    <div class="es-panel">
+      <div class="es-panel__head"><h3>Facility Performance</h3></div>
+      <div class="es-table-wrap">
+        <table class="es-table">
+          <thead><tr><th>Facility</th><th>Bookings</th><th>Revenue</th><th>Avg Duration</th><th>Utilization</th><th>Peak Hour</th></tr></thead>
+          <tbody id="facility-body"><tr><td colspan="6">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import { initAdminLayout } from "/assets/js/admin-layout.js";
+  import { computeGrowthComparisons, computeRangeRevenue, computeFacilityPerformance, computeCustomerGrowth } from "/assets/js/analytics.js";
+  import { getAllFacilities } from "/assets/js/facility-manager.js";
+  import { formatCurrency, todayISO, addDaysISO } from "/assets/js/utils.js";
+
+  await initAdminLayout({ activePage: "revenue", permission: "revenue.view" });
+
+  function deltaHTML(pct) {
+    const up = pct >= 0;
+    return `<span class="${up ? "is-up" : "is-down"}">${up ? "▲" : "▼"} ${Math.abs(pct).toFixed(1)}%</span>`;
+  }
+
+  const growth = await computeGrowthComparisons();
+  document.getElementById("g-today").textContent = formatCurrency(growth.today.value);
+  document.getElementById("g-today-d").innerHTML = deltaHTML(growth.today.changePct);
+  document.getElementById("g-week").textContent = formatCurrency(growth.week.value);
+  document.getElementById("g-week-d").innerHTML = deltaHTML(growth.week.changePct);
+  document.getElementById("g-month").textContent = formatCurrency(growth.month.value);
+  document.getElementById("g-month-d").innerHTML = deltaHTML(growth.month.changePct);
+  document.getElementById("g-bookings").textContent = `${growth.bookingGrowth.changePct >= 0 ? "+" : ""}${growth.bookingGrowth.changePct.toFixed(1)}%`;
+
+  const facilities = await getAllFacilities();
+  const today = todayISO();
+  document.getElementById("range-start").value = addDaysISO(today, -30);
+  document.getElementById("range-end").value = today;
+
+  async function loadRange() {
+    const start = document.getElementById("range-start").value;
+    const end = document.getElementById("range-end").value;
+
+    const [summary, facilityPerf, customerGrowth] = await Promise.all([
+      computeRangeRevenue(start, end),
+      computeFacilityPerformance(start, end, facilities),
+      computeCustomerGrowth(start, end),
+    ]);
+
+    document.getElementById("range-summary").innerHTML = `
+      <div class="es-metric-card"><div class="es-metric-card__label">Total Revenue</div><div class="es-metric-card__value">${formatCurrency(summary.revenue)}</div></div>
+      <div class="es-metric-card"><div class="es-metric-card__label">Total Bookings</div><div class="es-metric-card__value">${summary.totalBookings}</div></div>
+      <div class="es-metric-card"><div class="es-metric-card__label">Completed</div><div class="es-metric-card__value">${summary.completedBookings}</div></div>
+      <div class="es-metric-card"><div class="es-metric-card__label">Cancelled</div><div class="es-metric-card__value">${summary.cancelledBookings}</div></div>`;
+
+    document.getElementById("facility-body").innerHTML = facilityPerf.length
+      ? facilityPerf.map((f) => `<tr>
+          <td data-label="Facility">${f.name}</td>
+          <td data-label="Bookings">${f.bookings}</td>
+          <td data-label="Revenue">${formatCurrency(f.revenue)}</td>
+          <td data-label="Avg Duration">${f.avgDurationMinutes} min</td>
+          <td data-label="Utilization">${f.utilizationPct.toFixed(1)}%</td>
+          <td data-label="Peak Hour">${f.peakHour}</td>
+        </tr>`).join("")
+      : `<tr><td colspan="6">No activity in this range.</td></tr>`;
+
+    new Chart(document.getElementById("chart-trend"), {
+      type: "bar",
+      data: { labels: ["Completed", "Cancelled"], datasets: [{ data: [summary.completedBookings, summary.cancelledBookings], backgroundColor: ["#8ec63f", "#e2664f"] }] },
+      options: { responsive: true, plugins: { legend: { display: false } } },
+    });
+
+    new Chart(document.getElementById("chart-customers"), {
+      type: "doughnut",
+      data: { labels: ["New", "Returning"], datasets: [{ data: [customerGrowth.newCustomers, customerGrowth.returningCustomers], backgroundColor: ["#1f8a5f", "#e6a817"] }] },
+      options: { responsive: true },
+    });
+  }
+
+  document.getElementById("range-btn").addEventListener("click", loadRange);
+  await loadRange();
+</script>
+</body>
+</html>

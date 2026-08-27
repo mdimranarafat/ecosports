@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Book Your Slot — Eco Sports</title>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Work+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/global.css" />
+<link rel="stylesheet" href="/assets/css/public.css" />
+<link rel="stylesheet" href="/assets/css/responsive.css" />
+</head>
+<body data-page="booking">
+<div id="es-header-slot"></div>
+
+<section class="es-section" style="padding-top:var(--es-space-6);">
+  <div class="es-container">
+    <div class="es-eyebrow">Book Your Slot</div>
+    <h1 style="margin-bottom:var(--es-space-4);">Reserve Your Time</h1>
+
+    <div class="es-booking-layout">
+      <!-- Step 1: selection -->
+      <div>
+        <div class="es-card">
+          <div class="es-field">
+            <label class="es-label">Facility</label>
+            <select class="es-select" id="f-facility"><option>Loading…</option></select>
+          </div>
+          <div class="es-flex es-gap-3">
+            <div class="es-field" style="flex:1;">
+              <label class="es-label">Date</label>
+              <input class="es-input" type="date" id="f-date" />
+            </div>
+            <div class="es-field" style="flex:1;">
+              <label class="es-label">Duration</label>
+              <select class="es-select" id="f-duration"></select>
+            </div>
+          </div>
+
+          <label class="es-label">Available Start Times</label>
+          <div class="es-slot-grid" id="slot-grid"><p style="color:var(--es-moss);">Select a facility and date to see availability.</p></div>
+        </div>
+
+        <div class="es-card es-mt-4" id="details-card" style="display:none;">
+          <h3 style="margin-top:0;">Your Details</h3>
+          <div class="es-flex es-gap-3">
+            <div class="es-field" style="flex:1;"><label class="es-label">Full Name *</label><input class="es-input" id="c-name" required /></div>
+            <div class="es-field" style="flex:1;"><label class="es-label">Phone Number *</label><input class="es-input" id="c-phone" placeholder="01XXXXXXXXX" required /></div>
+          </div>
+          <div class="es-field"><label class="es-label">Email (optional)</label><input class="es-input" type="email" id="c-email" /></div>
+          <div class="es-flex es-gap-3">
+            <div class="es-field" style="flex:1;"><label class="es-label">Number of Players</label><input class="es-input" type="number" min="1" id="c-players" /></div>
+          </div>
+          <div class="es-field"><label class="es-label">Note (optional)</label><textarea class="es-input" id="c-note" rows="2"></textarea></div>
+        </div>
+      </div>
+
+      <!-- Step 2: summary -->
+      <div class="es-summary-panel">
+        <div class="es-card">
+          <h3 style="margin-top:0;">Booking Summary</h3>
+          <div id="summary-empty" style="color:var(--es-moss);">Select a slot to see your price.</div>
+          <div id="summary-filled" style="display:none;">
+            <div class="es-summary-row"><span>Facility</span><span id="s-facility" class="es-mono"></span></div>
+            <div class="es-summary-row"><span>Date</span><span id="s-date" class="es-mono"></span></div>
+            <div class="es-summary-row"><span>Time</span><span id="s-time" class="es-mono"></span></div>
+            <div class="es-summary-row"><span>Original Price</span><span id="s-original" class="es-mono"></span></div>
+            <div class="es-summary-row" id="s-discount-row" style="display:none;"><span>Discount</span><span id="s-discount" class="es-mono" style="color:var(--es-lime);"></span></div>
+            <div class="es-summary-row es-summary-row--total"><span>Total</span><span id="s-total"></span></div>
+            <button class="es-btn es-btn--primary es-btn--block es-mt-4" id="confirm-btn">Confirm Booking</button>
+            <p id="booking-error" style="color:var(--es-red);font-size:0.85rem;display:none;margin-top:12px;"></p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div id="es-footer-slot"></div>
+
+<!-- Success modal -->
+<div class="es-modal-backdrop" id="success-modal" style="display:none;">
+  <div class="es-modal es-text-center">
+    <div style="font-size:2.6rem;">✅</div>
+    <h2>Booking Requested!</h2>
+    <p>Your booking ID:</p>
+    <p class="es-mono" style="font-size:1.4rem;color:var(--es-amber);" id="success-id"></p>
+    <p style="font-size:0.9rem;">Status: <span class="es-status-pill es-status-pill--pending">Pending Confirmation</span></p>
+    <p style="font-size:0.85rem;">Our team will confirm your booking shortly. Save your booking ID for reference.</p>
+    <a href="/index.html" class="es-btn es-btn--primary es-btn--block">Back to Home</a>
+  </div>
+</div>
+
+<script type="module">
+  import { initLayout } from "/assets/js/layout.js";
+  import { getActiveFacilities } from "/assets/js/facility-manager.js";
+  import { buildSlotGrid } from "/assets/js/availability.js";
+  import { listActivePricingRules, computePrice, NoPricingRuleError } from "/assets/js/pricing-engine.js";
+  import { db } from "/assets/js/firebase-config.js";
+  import { collection, getDocs, query, where } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+  import { getBusinessSettings } from "/assets/js/settings-manager.js";
+  import { createBooking, SlotConflictError, ValidationError } from "/assets/js/booking-engine.js";
+  import { minutesToTimeStr } from "/assets/js/utils.js";
+
+  initLayout();
+
+  const params = new URLSearchParams(location.search);
+  let facilities = [], selectedFacility = null, selectedSlot = null, priceResult = null, rules = [], offers = [], settings = null;
+
+  async function init() {
+    [facilities, rules, settings] = await Promise.all([getActiveFacilities(), listActivePricingRules(), getBusinessSettings()]);
+    const offerSnap = await getDocs(query(collection(db, "offers"), where("active", "==", true)));
+    offers = offerSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+
+    const facilitySelect = document.getElementById("f-facility");
+    facilitySelect.innerHTML = facilities.map((f) => `<option value="${f.id}">${f.name}</option>`).join("");
+    if (params.get("facility")) facilitySelect.value = params.get("facility");
+
+    document.getElementById("f-date").min = new Date().toISOString().slice(0, 10);
+    document.getElementById("f-date").value = params.get("date") || new Date().toISOString().slice(0, 10);
+
+    onFacilityChange();
+    facilitySelect.addEventListener("change", onFacilityChange);
+    document.getElementById("f-date").addEventListener("change", refreshSlots);
+    document.getElementById("f-duration").addEventListener("change", refreshSlots);
+    document.getElementById("confirm-btn")?.addEventListener("click", submitBooking);
+  }
+
+  function onFacilityChange() {
+    selectedFacility = facilities.find((f) => f.id === document.getElementById("f-facility").value);
+    if (!selectedFacility) return;
+    const durSel = document.getElementById("f-duration");
+    const options = [];
+    for (let d = selectedFacility.minDurationMinutes; d <= selectedFacility.maxDurationMinutes; d += selectedFacility.slotIntervalMinutes) {
+      options.push(d);
+    }
+    durSel.innerHTML = options.map((d) => `<option value="${d}">${d < 60 ? d + " min" : (d / 60) + (d % 60 ? "." + Math.round((d % 60) / 6) : "") + " hr"}</option>`).join("");
+    if (params.get("duration")) durSel.value = params.get("duration");
+    refreshSlots();
+  }
+
+  async function refreshSlots() {
+    if (!selectedFacility) return;
+    const date = document.getElementById("f-date").value;
+    const duration = Number(document.getElementById("f-duration").value);
+    const grid = document.getElementById("slot-grid");
+    grid.innerHTML = `<p style="color:var(--es-moss);">Loading availability…</p>`;
+
+    const slots = await buildSlotGrid(selectedFacility, date, duration);
+    grid.innerHTML = slots
+      .map((s) => `<div class="es-slot ${s.available ? "" : "is-unavailable"}" data-start="${s.startMinutes}">${s.label}</div>`)
+      .join("") || `<p style="color:var(--es-moss);">No slots available for this duration.</p>`;
+
+    grid.querySelectorAll(".es-slot:not(.is-unavailable)").forEach((el) => {
+      el.addEventListener("click", () => selectSlot(Number(el.dataset.start), duration));
+    });
+
+    const preselectStart = params.get("start");
+    if (preselectStart) {
+      const match = grid.querySelector(`.es-slot[data-start="${preselectStart}"]:not(.is-unavailable)`);
+      if (match) match.click();
+      params.delete("start");
+    }
+  }
+
+  function selectSlot(startMinutes, durationMinutes) {
+    document.querySelectorAll(".es-slot").forEach((el) => el.classList.remove("is-selected"));
+    document.querySelector(`.es-slot[data-start="${startMinutes}"]`)?.classList.add("is-selected");
+    selectedSlot = { startMinutes, durationMinutes, date: document.getElementById("f-date").value };
+    document.getElementById("details-card").style.display = "block";
+
+    try {
+      priceResult = computePrice({
+        facilityId: selectedFacility.id,
+        dateISO: selectedSlot.date,
+        startMinutes,
+        durationMinutes,
+        rules,
+        offers,
+        settings,
+      });
+      renderSummary();
+    } catch (err) {
+      if (err instanceof NoPricingRuleError) {
+        document.getElementById("summary-empty").style.display = "block";
+        document.getElementById("summary-empty").textContent = "Pricing isn't configured for this time slot yet — please choose another time or contact us.";
+        document.getElementById("summary-filled").style.display = "none";
+      }
+    }
+  }
+
+  function renderSummary() {
+    document.getElementById("summary-empty").style.display = "none";
+    document.getElementById("summary-filled").style.display = "block";
+    document.getElementById("s-facility").textContent = selectedFacility.name;
+    document.getElementById("s-date").textContent = selectedSlot.date;
+    document.getElementById("s-time").textContent = `${minutesToTimeStr(selectedSlot.startMinutes)} (${selectedSlot.durationMinutes} min)`;
+    document.getElementById("s-original").textContent = `${priceResult.originalPrice} BDT`;
+    if (priceResult.discountAmount > 0) {
+      document.getElementById("s-discount-row").style.display = "flex";
+      document.getElementById("s-discount").textContent = `-${priceResult.discountAmount} BDT`;
+    } else {
+      document.getElementById("s-discount-row").style.display = "none";
+    }
+    document.getElementById("s-total").textContent = `${priceResult.finalPrice} BDT`;
+  }
+
+  async function submitBooking() {
+    const errorEl = document.getElementById("booking-error");
+    errorEl.style.display = "none";
+    const btn = document.getElementById("confirm-btn");
+    btn.disabled = true;
+    btn.textContent = "Booking…";
+
+    try {
+      const result = await createBooking({
+        facilityId: selectedFacility.id,
+        facilityName: selectedFacility.name,
+        customerName: document.getElementById("c-name").value,
+        customerPhone: document.getElementById("c-phone").value,
+        customerEmail: document.getElementById("c-email").value,
+        date: selectedSlot.date,
+        startMinutes: selectedSlot.startMinutes,
+        durationMinutes: selectedSlot.durationMinutes,
+        players: document.getElementById("c-players").value ? Number(document.getElementById("c-players").value) : null,
+        note: document.getElementById("c-note").value,
+        rules, offers, settings,
+        source: "public",
+        createdBy: "public",
+      });
+
+      const { recordOfferUsage } = await import("/assets/js/offers-engine.js");
+      if (result.offerId) await recordOfferUsage(result.offerId, result);
+      const { upsertCustomerOnBooking } = await import("/assets/js/customer-manager.js");
+      await upsertCustomerOnBooking(result, { isNew: true });
+
+      document.getElementById("success-id").textContent = result.bookingId;
+      document.getElementById("success-modal").style.display = "flex";
+    } catch (err) {
+      if (err instanceof SlotConflictError) {
+        errorEl.textContent = err.message;
+        refreshSlots();
+      } else if (err instanceof ValidationError) {
+        errorEl.textContent = err.message;
+      } else {
+        errorEl.textContent = "Something went wrong. Please try again.";
+        console.error(err);
+      }
+      errorEl.style.display = "block";
+      btn.disabled = false;
+      btn.textContent = "Confirm Booking";
+    }
+  }
+
+  init();
+</script>
+</body>
+</html>

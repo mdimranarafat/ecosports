@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Manager Dashboard — Eco Sports</title>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Work+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/global.css" />
+<link rel="stylesheet" href="/assets/css/admin.css" />
+<link rel="stylesheet" href="/assets/css/responsive.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+</head>
+<body>
+<!--
+  Manager Dashboard uses the SAME shell/sidebar as the admin panel
+  (admin-layout.js filters nav links by permission automatically — a
+  manager signed in here only ever sees Bookings, Calendar, Facilities
+  (view-only), Customers, Offers, Revenue, and Reports). This page itself
+  is a simplified operational summary; managers can drill into full pages
+  via the sidebar for anything the nav exposes.
+-->
+<div class="es-admin-shell" id="es-admin-shell">
+  <div style="width:100%;">
+    <div class="es-topbar">
+      <h1 class="es-topbar__title">Manager Dashboard</h1>
+      <span id="today-label" class="es-mono" style="color:var(--es-moss);font-size:0.85rem;"></span>
+    </div>
+
+    <div class="es-metrics-grid" id="metrics-grid">
+      <div class="es-metric-card"><div class="es-skeleton" style="height:60px;"></div></div>
+      <div class="es-metric-card"><div class="es-skeleton" style="height:60px;"></div></div>
+      <div class="es-metric-card"><div class="es-skeleton" style="height:60px;"></div></div>
+      <div class="es-metric-card"><div class="es-skeleton" style="height:60px;"></div></div>
+    </div>
+
+    <div class="es-panel">
+      <div class="es-panel__head"><h3>Quick Actions</h3></div>
+      <div class="es-flex es-gap-3" style="flex-wrap:wrap;">
+        <a class="es-btn es-btn--primary" href="/admin/bookings.html">+ New / Manage Bookings</a>
+        <a class="es-btn es-btn--ghost" href="/admin/calendar.html">View Calendar</a>
+        <a class="es-btn es-btn--ghost" href="/admin/customers.html">Customer Lookup</a>
+        <a class="es-btn es-btn--ghost" href="/admin/offers.html">Manage Offers</a>
+        <a class="es-btn es-btn--ghost" href="/admin/reports.html">Export Reports</a>
+      </div>
+    </div>
+
+    <div class="es-charts-grid">
+      <div class="es-panel"><div class="es-panel__head"><h3>Revenue — Last 7 Days</h3></div><canvas id="chart-revenue" height="110"></canvas></div>
+      <div class="es-panel"><div class="es-panel__head"><h3>Today's Bookings</h3></div><canvas id="chart-status" height="110"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import { initAdminLayout } from "/assets/js/admin-layout.js";
+  import { loadDashboardData, renderRevenueLineChart, renderBookingStatusDonut } from "/assets/js/dashboard.js";
+
+  // Any active staff member can land here; the sidebar itself is what
+  // restricts what a manager/staff account can reach. dashboard.view is
+  // the baseline permission everyone with panel access holds.
+  await initAdminLayout({ activePage: "dashboard", permission: "dashboard.view" });
+
+  document.getElementById("today-label").textContent = new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+
+  const data = await loadDashboardData();
+
+  document.getElementById("metrics-grid").innerHTML = `
+    <div class="es-metric-card"><div class="es-metric-card__label">Today's Bookings</div><div class="es-metric-card__value">${data.today.totalBookings}</div></div>
+    <div class="es-metric-card"><div class="es-metric-card__label">Pending Approval</div><div class="es-metric-card__value">${data.today.pendingBookings}</div></div>
+    <div class="es-metric-card"><div class="es-metric-card__label">Today's Revenue</div><div class="es-metric-card__value">${data.today.revenue.toLocaleString()} BDT</div></div>
+    <div class="es-metric-card"><div class="es-metric-card__label">Most Booked Facility</div><div class="es-metric-card__value" style="font-size:1.3rem;">${data.mostBookedFacility?.name || "—"}</div></div>`;
+
+  renderRevenueLineChart("chart-revenue", data.weekRevenueSeries);
+  renderBookingStatusDonut("chart-status", data.today);
+</script>
+</body>
+</html>
