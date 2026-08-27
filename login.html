@@ -5,9 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Staff Login — Eco Sports</title>
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Work+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/css/global.css" />
-<link rel="stylesheet" href="assets/css/admin.css" />
-<link rel="stylesheet" href="assets/css/responsive.css" />
+<link rel="stylesheet" href="/assets/css/global.css" />
+<link rel="stylesheet" href="/assets/css/admin.css" />
+<link rel="stylesheet" href="/assets/css/responsive.css" />
 </head>
 <body>
 <div class="es-login-shell">
@@ -26,48 +26,31 @@
       <p id="login-error" style="color:var(--es-red);font-size:0.85rem;display:none;"></p>
       <button class="es-btn es-btn--primary es-btn--block" type="submit" id="login-submit">Sign In</button>
     </form>
-    <p class="es-text-center es-mt-4" style="font-size:0.85rem;"><a href="index.html">&larr; Back to website</a></p>
+    <p class="es-text-center es-mt-4" style="font-size:0.85rem;"><a href="/index.html">&larr; Back to website</a></p>
   </div>
 </div>
 
 <script type="module">
-  import { login, onAuthReady } from "./assets/js/auth.js";
-
-  // Dynamic repository path for GitHub Pages and Localhost
-  const getBasePath = () => {
-    const path = window.location.pathname;
-    const repoMatch = path.match(/^\/([^/]+)/);
-    if (window.location.hostname.includes("github.io") && repoMatch) {
-      return `/${repoMatch[1]}`;
-    }
-    return "";
-  };
+  import { login, onAuthReady } from "/assets/js/auth.js";
 
   // Already signed in? Route straight to the right dashboard.
   onAuthReady((user, profile) => {
     if (user && profile) {
-      const basePath = getBasePath();
-      const targetDashboard = (profile.role === "manager" || profile.role === "staff")
-        ? `${basePath}/manager/dashboard.html`
-        : `${basePath}/admin/dashboard.html`;
-        
-      window.location.href = targetDashboard;
+      window.location.href = profile.role === "manager" || profile.role === "staff" ? "/manager/dashboard.html" : "/admin/dashboard.html";
     }
   });
 
   const errorEl = document.getElementById("login-error");
   const submitBtn = document.getElementById("login-submit");
 
-  document.getElementById("login-form")?.addEventListener("submit", async (e) => {
+  document.getElementById("login-form").addEventListener("submit", async (e) => {
     e.preventDefault();
     errorEl.style.display = "none";
     submitBtn.disabled = true;
     submitBtn.textContent = "Signing in…";
     try {
-      await login(
-        document.getElementById("login-email").value.trim(),
-        document.getElementById("login-password").value
-      );
+      await login(document.getElementById("login-email").value.trim(), document.getElementById("login-password").value);
+      // onAuthReady above handles the redirect once the profile loads.
     } catch (err) {
       errorEl.textContent = "Invalid email or password. Please try again.";
       errorEl.style.display = "block";
