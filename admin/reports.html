@@ -5,9 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Reports — Eco Sports Admin</title>
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Work+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/css/global.css" />
-<link rel="stylesheet" href="/assets/css/admin.css" />
-<link rel="stylesheet" href="/assets/css/responsive.css" />
+<link rel="stylesheet" href="../assets/css/global.css" />
+<link rel="stylesheet" href="../assets/css/admin.css" />
+<link rel="stylesheet" href="../assets/css/responsive.css" />
 </head>
 <body>
 <div class="es-admin-shell" id="es-admin-shell">
@@ -36,12 +36,12 @@
 </div>
 
 <script type="module">
-  import { initAdminLayout, showToast } from "/assets/js/admin-layout.js";
+  import { initAdminLayout, showToast } from "../assets/js/admin-layout.js";
   import {
     exportBookingsCsv, exportRevenueCsv, exportCustomersCsv,
     exportExpensesCsv, exportFacilityPerformanceCsv, exportPaymentReportCsv,
-  } from "/assets/js/csv-export.js";
-  import { getAllFacilities } from "/assets/js/facility-manager.js";
+  } from "../assets/js/csv-export.js";
+  import { getAllFacilities } from "../assets/js/facility-manager.js";
 
   const { profile } = await initAdminLayout({ activePage: "reports", permission: "reports.export" });
 
