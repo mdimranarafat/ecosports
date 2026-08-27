@@ -140,7 +140,7 @@
             <span>${f.slotIntervalMinutes || 30} min slots</span>
           </div>
           <div class="es-facility-card__footer">
-            <a href="/booking.html?facility=${f.id}" class="es-btn es-btn--ghost" style="padding:8px 18px;font-size:0.8rem;">View &amp; Book</a>
+            <a href="booking.html?facility=${f.id}" class="es-btn es-btn--ghost" style="padding:8px 18px;font-size:0.8rem;">View &amp; Book</a>
           </div>
         </div>
       </div>`
@@ -195,7 +195,7 @@
             .map(
               (s) =>
                 `<a class="es-slot ${s.available ? "" : "is-unavailable"}" href="${
-                  s.available ? `/booking.html?facility=${facility.id}&date=${date}&start=${s.startMinutes}&duration=${duration}` : "#"
+                  s.available ? `booking.html?facility=${facility.id}&date=${date}&start=${s.startMinutes}&duration=${duration}` : "#"
                 }">${s.label}</a>`
             )
             .join("")}
