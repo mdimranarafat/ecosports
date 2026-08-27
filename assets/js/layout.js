@@ -6,13 +6,14 @@
 // as a static file. Active nav link is set from data-page on <body>.
 // ============================================================================
 
+// ✅ Fixed Relative Paths (Removed leading '/')
 const NAV_LINKS = [
-  { href: "/index.html", label: "Home", page: "home" },
-  { href: "/facilities.html", label: "Facilities", page: "facilities" },
-  { href: "/booking.html", label: "Book Now", page: "booking" },
-  { href: "/offers.html", label: "Offers", page: "offers" },
-  { href: "/about.html", label: "About", page: "about" },
-  { href: "/contact.html", label: "Contact", page: "contact" },
+  { href: "index.html", label: "Home", page: "home" },
+  { href: "facilities.html", label: "Facilities", page: "facilities" },
+  { href: "booking.html", label: "Book Now", page: "booking" },
+  { href: "offers.html", label: "Offers", page: "offers" },
+  { href: "about.html", label: "About", page: "about" },
+  { href: "contact.html", label: "Contact", page: "contact" },
 ];
 
 export function renderHeader() {
@@ -27,9 +28,9 @@ export function renderHeader() {
   slot.innerHTML = `
     <header class="es-header">
       <div class="es-container es-header__row">
-        <a href="/index.html" class="es-logo">ECO <span>SPORTS</span></a>
+        <a href="index.html" class="es-logo">ECO <span>SPORTS</span></a>
         <nav class="es-nav" id="es-nav">${links}
-          <a href="/booking.html" class="es-btn es-btn--primary" style="padding:10px 20px;font-size:0.82rem;">Book Your Slot</a>
+          <a href="booking.html" class="es-btn es-btn--primary" style="padding:10px 20px;font-size:0.82rem;">Book Your Slot</a>
         </nav>
         <button class="es-nav__toggle" id="es-nav-toggle" aria-label="Toggle menu">&#9776;</button>
       </div>
@@ -54,15 +55,15 @@ export function renderFooter() {
           </div>
           <div>
             <h3 style="font-size:0.95rem;">Explore</h3>
-            <p><a href="/facilities.html">Facilities</a></p>
-            <p><a href="/offers.html">Offers</a></p>
-            <p><a href="/booking.html">Book Now</a></p>
+            <p><a href="facilities.html">Facilities</a></p>
+            <p><a href="offers.html">Offers</a></p>
+            <p><a href="booking.html">Book Now</a></p>
           </div>
           <div>
             <h3 style="font-size:0.95rem;">Company</h3>
-            <p><a href="/about.html">About Us</a></p>
-            <p><a href="/contact.html">Contact</a></p>
-            <p><a href="/login.html">Staff Login</a></p>
+            <p><a href="about.html">About Us</a></p>
+            <p><a href="contact.html">Contact</a></p>
+            <p><a href="login.html">Staff Login</a></p>
           </div>
           <div>
             <h3 style="font-size:0.95rem;">Contact</h3>
@@ -77,7 +78,7 @@ export function renderFooter() {
       </div>
     </footer>`;
 
-  // Best-effort: fill in the live business phone from settings, falls back silently.
+  // ✅ Fixed dynamic import path to relative "./firebase-config.js"
   import("./firebase-config.js").then(async ({ db }) => {
     const { doc, getDoc } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
     try {
