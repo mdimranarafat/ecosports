@@ -26,7 +26,8 @@
       <p id="login-error" style="color:var(--es-red);font-size:0.85rem;display:none;"></p>
       <button class="es-btn es-btn--primary es-btn--block" type="submit" id="login-submit">Sign In</button>
     </form>
-    <p class="es-text-center es-mt-4" style="font-size:0.85rem;"><a href="/index.html">&larr; Back to website</a></p>
+    <!-- ✅ Path Fix: /index.html -> index.html -->
+    <p class="es-text-center es-mt-4" style="font-size:0.85rem;"><a href="index.html">&larr; Back to website</a></p>
   </div>
 </div>
 
@@ -36,7 +37,8 @@
   // Already signed in? Route straight to the right dashboard.
   onAuthReady((user, profile) => {
     if (user && profile) {
-      window.location.href = profile.role === "manager" || profile.role === "staff" ? "/manager/dashboard.html" : "/admin/dashboard.html";
+      // ✅ Path Fix: Removed leading slashes
+      window.location.href = profile.role === "manager" || profile.role === "staff" ? "manager/dashboard.html" : "admin/dashboard.html";
     }
   });
 
@@ -50,7 +52,6 @@
     submitBtn.textContent = "Signing in…";
     try {
       await login(document.getElementById("login-email").value.trim(), document.getElementById("login-password").value);
-      // onAuthReady above handles the redirect once the profile loads.
     } catch (err) {
       errorEl.textContent = "Invalid email or password. Please try again.";
       errorEl.style.display = "block";
