@@ -5,9 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Book Your Slot — Eco Sports</title>
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Work+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/css/global.css" />
-<link rel="stylesheet" href="/assets/css/public.css" />
-<link rel="stylesheet" href="/assets/css/responsive.css" />
+<link rel="stylesheet" href="../assets/css/global.css" />
+<link rel="stylesheet" href="../assets/css/public.css" />
+<link rel="stylesheet" href="../assets/css/responsive.css" />
 </head>
 <body data-page="booking">
 <div id="es-header-slot"></div>
@@ -91,11 +91,11 @@
 </div>
 
 <script type="module">
-  import { initLayout } from "/assets/js/layout.js";
-  import { getActiveFacilities } from "/assets/js/facility-manager.js";
-  import { buildSlotGrid } from "/assets/js/availability.js";
-  import { listActivePricingRules, computePrice, NoPricingRuleError } from "/assets/js/pricing-engine.js";
-  import { db } from "/assets/js/firebase-config.js";
+  import { initLayout } from "../assets/js/layout.js";
+  import { getActiveFacilities } from "../assets/js/facility-manager.js";
+  import { buildSlotGrid } from "../assets/js/availability.js";
+  import { listActivePricingRules, computePrice, NoPricingRuleError } from "../assets/js/pricing-engine.js";
+  import { db } from "../assets/js/firebase-config.js";
   import { collection, getDocs, query, where } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
   import { getBusinessSettings } from "/assets/js/settings-manager.js";
   import { createBooking, SlotConflictError, ValidationError } from "/assets/js/booking-engine.js";
