@@ -7,6 +7,7 @@
 <meta name="description" content="Eco Sports Chattogram — book 5A/6A/7A turf, badminton, swimming pool and more, instantly, with real-time availability." />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Work+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<!-- ✅ Fixed CSS Relative Paths -->
 <link rel="stylesheet" href="assets/css/global.css" />
 <link rel="stylesheet" href="assets/css/public.css" />
 <link rel="stylesheet" href="assets/css/responsive.css" />
@@ -22,7 +23,8 @@
       <h1>Your Slot.<br/>Your Game.<br/>Booked in Seconds.</h1>
       <p style="font-size:1.1rem;max-width:520px;">Turf football, badminton, swimming, cricket nets and more — real-time availability, transparent pricing, zero back-and-forth phone calls.</p>
       <div class="es-hero__cta">
-        <a href="/booking.html" class="es-btn es-btn--primary">Book Your Slot</a>
+        <!-- ✅ Fixed Link Path: /booking.html -> booking.html -->
+        <a href="booking.html" class="es-btn es-btn--primary">Book Your Slot</a>
         <a href="#quickbook" class="es-btn es-btn--ghost">Check Availability</a>
       </div>
       <div class="es-hero__stats">
@@ -101,11 +103,12 @@
 <div class="es-toast" id="toast"></div>
 
 <script type="module">
-  import { initLayout } from "assets/js/layout.js";
-  import { getActiveFacilities } from "assets/js/facility-manager.js";
-  import { buildSlotGrid } from "assets/js/availability.js";
-  import { minutesToTimeStr } from "assets/js/utils.js";
-  import { db } from "assets/js/firebase-config.js";
+  // ✅ Fixed JS Import Relative Paths (Added "./")
+  import { initLayout } from "./assets/js/layout.js";
+  import { getActiveFacilities } from "./assets/js/facility-manager.js";
+  import { buildSlotGrid } from "./assets/js/availability.js";
+  import { minutesToTimeStr } from "./assets/js/utils.js";
+  import { db } from "./assets/js/firebase-config.js";
   import { collection, getDocs, query, where } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
   initLayout();
