@@ -5,9 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Book Your Slot — Eco Sports</title>
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Work+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../assets/css/global.css" />
-<link rel="stylesheet" href="../assets/css/public.css" />
-<link rel="stylesheet" href="../assets/css/responsive.css" />
+
+<!-- ✅ Fixed CSS Relative Paths -->
+<link rel="stylesheet" href="assets/css/global.css" />
+<link rel="stylesheet" href="assets/css/public.css" />
+<link rel="stylesheet" href="assets/css/responsive.css" />
 </head>
 <body data-page="booking">
 <div id="es-header-slot"></div>
@@ -86,20 +88,22 @@
     <p class="es-mono" style="font-size:1.4rem;color:var(--es-amber);" id="success-id"></p>
     <p style="font-size:0.9rem;">Status: <span class="es-status-pill es-status-pill--pending">Pending Confirmation</span></p>
     <p style="font-size:0.85rem;">Our team will confirm your booking shortly. Save your booking ID for reference.</p>
-    <a href="/index.html" class="es-btn es-btn--primary es-btn--block">Back to Home</a>
+    <!-- ✅ Fixed Home Link Path -->
+    <a href="index.html" class="es-btn es-btn--primary es-btn--block">Back to Home</a>
   </div>
 </div>
 
 <script type="module">
-  import { initLayout } from "../assets/js/layout.js";
-  import { getActiveFacilities } from "../assets/js/facility-manager.js";
-  import { buildSlotGrid } from "../assets/js/availability.js";
-  import { listActivePricingRules, computePrice, NoPricingRuleError } from "../assets/js/pricing-engine.js";
-  import { db } from "../assets/js/firebase-config.js";
+  // ✅ Fixed JS Import Paths (Changed to relative "./assets/js/...")
+  import { initLayout } from "./assets/js/layout.js";
+  import { getActiveFacilities } from "./assets/js/facility-manager.js";
+  import { buildSlotGrid } from "./assets/js/availability.js";
+  import { listActivePricingRules, computePrice, NoPricingRuleError } from "./assets/js/pricing-engine.js";
+  import { db } from "./assets/js/firebase-config.js";
   import { collection, getDocs, query, where } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-  import { getBusinessSettings } from "/assets/js/settings-manager.js";
-  import { createBooking, SlotConflictError, ValidationError } from "/assets/js/booking-engine.js";
-  import { minutesToTimeStr } from "/assets/js/utils.js";
+  import { getBusinessSettings } from "./assets/js/settings-manager.js";
+  import { createBooking, SlotConflictError, ValidationError } from "./assets/js/booking-engine.js";
+  import { minutesToTimeStr } from "./assets/js/utils.js";
 
   initLayout();
 
@@ -212,6 +216,10 @@
     btn.textContent = "Booking…";
 
     try {
+      // ✅ Dynamic Imports updated to relative path
+      const { recordOfferUsage } = await import("./assets/js/offers-engine.js");
+      const { upsertCustomerOnBooking } = await import("./assets/js/customer-manager.js");
+
       const result = await createBooking({
         facilityId: selectedFacility.id,
         facilityName: selectedFacility.name,
@@ -228,9 +236,7 @@
         createdBy: "public",
       });
 
-      const { recordOfferUsage } = await import("/assets/js/offers-engine.js");
       if (result.offerId) await recordOfferUsage(result.offerId, result);
-      const { upsertCustomerOnBooking } = await import("/assets/js/customer-manager.js");
       await upsertCustomerOnBooking(result, { isNew: true });
 
       document.getElementById("success-id").textContent = result.bookingId;
