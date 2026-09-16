@@ -5,9 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Offers — Eco Sports</title>
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Work+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../assets/css/global.css" />
-<link rel="stylesheet" href="../assets/css/public.css" />
-<link rel="stylesheet" href="../assets/css/responsive.css" />
+<link rel="stylesheet" href="assets/css/global.css" />
+<link rel="stylesheet" href="assets/css/public.css" />
+<link rel="stylesheet" href="assets/css/responsive.css" />
 </head>
 <body data-page="offers">
 <div id="es-header-slot"></div>
@@ -27,9 +27,9 @@
 <div id="es-footer-slot"></div>
 
 <script type="module">
-  import { initLayout } from "../assets/js/layout.js";
-  import { db } from "../assets/js/firebase-config.js";
-  import { minutesToTimeStr } from "../assets/js/utils.js";
+  import { initLayout } from "assets/js/layout.js";
+  import { db } from "assets/js/firebase-config.js";
+  import { minutesToTimeStr } from "assets/js/utils.js";
   import { collection, getDocs, query, where } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
   initLayout();
 
@@ -65,7 +65,7 @@
         <span class="es-offer-card__badge">${typeLabel(o)}</span>
         <h3 style="margin-bottom:6px;">${o.name}</h3>
         <p style="margin:0 0 12px;">${describe(o)}</p>
-        <a href="/booking.html" class="es-btn es-btn--ghost" style="padding:8px 18px;font-size:0.8rem;">Book &amp; Save</a>
+        <a href="booking.html" class="es-btn es-btn--ghost" style="padding:8px 18px;font-size:0.8rem;">Book &amp; Save</a>
       </div>`
       )
       .join("");

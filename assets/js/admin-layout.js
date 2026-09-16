@@ -113,7 +113,7 @@ function renderShell(activePage, profile) {
 
   document.getElementById("es-logout-btn").addEventListener("click", async () => {
     await logout();
-    window.location.href = "/login.html";
+    window.location.href = new URL("../login.html", document.baseURI).href;
   });
 
   const sidebar = document.getElementById("es-sidebar");

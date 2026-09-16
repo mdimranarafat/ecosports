@@ -114,7 +114,7 @@
         ${b.status !== "completed" ? `<button class="es-btn es-btn--ghost" data-status="completed">Mark Completed</button>` : ""}
         ${b.status !== "cancelled" ? `<button class="es-btn es-btn--ghost" data-status="cancelled">Cancel</button>` : ""}
       </div>` : ""}
-      <p style="font-size:0.85rem;margin-top:12px;"><a href="/admin/bookings.html">Full edit options in Bookings →</a></p>`;
+      <p style="font-size:0.85rem;margin-top:12px;"><a href="../admin/bookings.html">Full edit options in Bookings →</a></p>`;
 
     document.querySelectorAll("[data-status]").forEach((btn) =>
       btn.addEventListener("click", async () => {
