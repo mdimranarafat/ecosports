@@ -12,33 +12,33 @@ import { ROLE_LABELS } from "./roles.js";
 const NAV_SECTIONS = [
   {
     label: "Overview",
-    links: [{ href: "/admin/dashboard.html", label: "Dashboard", page: "dashboard", perm: "dashboard.view" }],
+    links: [{ href: "../admin/dashboard.html", label: "Dashboard", page: "dashboard", perm: "dashboard.view" }],
   },
   {
     label: "Operations",
     links: [
-      { href: "/admin/bookings.html", label: "Bookings", page: "bookings", perm: "bookings.view" },
-      { href: "/admin/calendar.html", label: "Calendar", page: "calendar", perm: "bookings.view" },
-      { href: "/admin/facilities.html", label: "Facilities", page: "facilities", perm: "facilities.view" },
-      { href: "/admin/customers.html", label: "Customers", page: "customers", perm: "customers.view" },
+      { href: "../admin/bookings.html", label: "Bookings", page: "bookings", perm: "bookings.view" },
+      { href: "../admin/calendar.html", label: "Calendar", page: "calendar", perm: "bookings.view" },
+      { href: "../admin/facilities.html", label: "Facilities", page: "facilities", perm: "facilities.view" },
+      { href: "../admin/customers.html", label: "Customers", page: "customers", perm: "customers.view" },
     ],
   },
   {
     label: "Revenue",
     links: [
-      { href: "/admin/pricing.html", label: "Pricing Rules", page: "pricing", perm: "pricing.manage" },
-      { href: "/admin/offers.html", label: "Offers", page: "offers", perm: "offers.manage" },
-      { href: "/admin/revenue.html", label: "Revenue & Growth", page: "revenue", perm: "revenue.view" },
-      { href: "/admin/expenses.html", label: "Expenses", page: "expenses", perm: "expenses.manage" },
-      { href: "/admin/reports.html", label: "Reports & CSV", page: "reports", perm: "reports.export" },
+      { href: "../admin/pricing.html", label: "Pricing Rules", page: "pricing", perm: "pricing.manage" },
+      { href: "../admin/offers.html", label: "Offers", page: "offers", perm: "offers.manage" },
+      { href: "../admin/revenue.html", label: "Revenue & Growth", page: "revenue", perm: "revenue.view" },
+      { href: "../admin/expenses.html", label: "Expenses", page: "expenses", perm: "expenses.manage" },
+      { href: "../admin/reports.html", label: "Reports & CSV", page: "reports", perm: "reports.export" },
     ],
   },
   {
     label: "System",
     links: [
-      { href: "/admin/staff.html", label: "Staff & Roles", page: "staff", perm: "staff.manage" },
-      { href: "/admin/audit-logs.html", label: "Audit Logs", page: "audit-logs", perm: "audit.view" },
-      { href: "/admin/settings.html", label: "Settings", page: "settings", perm: "settings.manage" },
+      { href: "../admin/staff.html", label: "Staff & Roles", page: "staff", perm: "staff.manage" },
+      { href: "../admin/audit-logs.html", label: "Audit Logs", page: "audit-logs", perm: "audit.view" },
+      { href: "../admin/settings.html", label: "Settings", page: "settings", perm: "settings.manage" },
     ],
   },
 ];
