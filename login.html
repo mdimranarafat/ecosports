@@ -33,15 +33,29 @@
 <script type="module">
   import { login, onAuthReady } from "./assets/js/auth.js";
 
+  const errorEl = document.getElementById("login-error");
+  const submitBtn = document.getElementById("login-submit");
+
   // Already signed in? Route straight to the right dashboard.
   onAuthReady((user, profile) => {
+    if (user && !profile) {
+      errorEl.textContent = "Your Firebase account is valid, but no staff profile was found. Create users/" + user.uid + " in Firestore with status: active and a valid role.";
+      errorEl.style.display = "block";
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Sign In";
+      return;
+    }
     if (user && profile) {
+      if (profile.status !== "active") {
+        errorEl.textContent = "Your staff account is inactive. Ask a super admin to set status to active.";
+        errorEl.style.display = "block";
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Sign In";
+        return;
+      }
       window.location.href = profile.role === "manager" || profile.role === "staff" ? "manager/dashboard.html" : "admin/dashboard.html";
     }
   });
-
-  const errorEl = document.getElementById("login-error");
-  const submitBtn = document.getElementById("login-submit");
 
   document.getElementById("login-form").addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -52,7 +66,17 @@
       await login(document.getElementById("login-email").value.trim(), document.getElementById("login-password").value);
       // onAuthReady above handles the redirect once the profile loads.
     } catch (err) {
-      errorEl.textContent = "Invalid email or password. Please try again.";
+      const messages = {
+        "auth/invalid-credential": "Email or password is incorrect.",
+        "auth/invalid-login-credentials": "Email or password is incorrect.",
+        "auth/user-not-found": "No Firebase Authentication user exists for this email.",
+        "auth/wrong-password": "Email or password is incorrect.",
+        "auth/too-many-requests": "Too many attempts. Wait a few minutes and try again.",
+        "auth/user-disabled": "This Firebase Authentication account has been disabled.",
+        "auth/operation-not-allowed": "Email/password sign-in is disabled in Firebase Authentication.",
+        "auth/network-request-failed": "Could not reach Firebase. Check the internet connection and authorized domain.",
+      };
+      errorEl.textContent = messages[err?.code] || "Sign-in failed. Check Firebase Authentication setup and try again.";
       errorEl.style.display = "block";
       submitBtn.disabled = false;
       submitBtn.textContent = "Sign In";
