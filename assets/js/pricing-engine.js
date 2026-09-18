@@ -23,6 +23,28 @@ import { logAudit } from "./reports.js";
 
 const RULES_COL = "pricingRules";
 
+// Frenzy Arena pricing imported into the EcoSports schema. Prices are in BDT.
+const ALL_DAYS = [0, 1, 2, 3, 4, 5, 6];
+const WEEKDAYS = [0, 1, 2, 3];
+const SURCHARGE_DAYS = [4, 5, 6];
+const durations = (values) => ({ "60": values[0], "90": values[1], "120": values[2], "150": values[3], "180": values[4] });
+export const DEFAULT_PRICING_RULES = [
+  { id: "sixASideTurf-day", facilityId: "sixASideTurf", days: WEEKDAYS, startMinutes: 300, endMinutes: 1020, durationPrices: durations([750, 1150, 1550, 1950, 2350]), priority: 10, active: true },
+  { id: "sixASideTurf-night", facilityId: "sixASideTurf", days: WEEKDAYS, startMinutes: 1020, endMinutes: 1440, durationPrices: durations([1450, 2200, 2950, 3700, 4450]), priority: 10, active: true },
+  { id: "sixASideTurf-midnight", facilityId: "sixASideTurf", days: WEEKDAYS, startMinutes: 0, endMinutes: 300, durationPrices: durations([1200, 1400, 1600, 1800, 2000]), priority: 10, active: true },
+  { id: "sixASideTurf-surcharge-day", facilityId: "sixASideTurf", days: SURCHARGE_DAYS, startMinutes: 300, endMinutes: 1020, durationPrices: durations([900, 1400, 1900, 2400, 2900]), priority: 10, active: true },
+  { id: "sixASideTurf-surcharge-night", facilityId: "sixASideTurf", days: SURCHARGE_DAYS, startMinutes: 1020, endMinutes: 1440, durationPrices: durations([1800, 2700, 3600, 4600, 5500]), priority: 10, active: true },
+  { id: "sixASideTurf-surcharge-midnight", facilityId: "sixASideTurf", days: SURCHARGE_DAYS, startMinutes: 0, endMinutes: 300, durationPrices: durations([1500, 1700, 2000, 2200, 2500]), priority: 10, active: true },
+  { id: "fourASideTurf-day", facilityId: "fourASideTurf", days: WEEKDAYS, startMinutes: 300, endMinutes: 1020, durationPrices: durations([500, 750, 1000, 1250, 1500]), priority: 10, active: true },
+  { id: "fourASideTurf-night", facilityId: "fourASideTurf", days: WEEKDAYS, startMinutes: 1020, endMinutes: 1440, durationPrices: durations([1000, 1200, 1400, 1600, 1800]), priority: 10, active: true },
+  { id: "fourASideTurf-midnight", facilityId: "fourASideTurf", days: WEEKDAYS, startMinutes: 0, endMinutes: 300, durationPrices: durations([900, 1200, 1500, 1800, 2100]), priority: 10, active: true },
+  { id: "fourASideTurf-surcharge-day", facilityId: "fourASideTurf", days: SURCHARGE_DAYS, startMinutes: 300, endMinutes: 1020, durationPrices: durations([600, 900, 1200, 1500, 1800]), priority: 10, active: true },
+  { id: "fourASideTurf-surcharge-night", facilityId: "fourASideTurf", days: SURCHARGE_DAYS, startMinutes: 1020, endMinutes: 1440, durationPrices: durations([1200, 1500, 1700, 2000, 2200]), priority: 10, active: true },
+  { id: "fourASideTurf-surcharge-midnight", facilityId: "fourASideTurf", days: SURCHARGE_DAYS, startMinutes: 0, endMinutes: 300, durationPrices: durations([1100, 1500, 1800, 2200, 2600]), priority: 10, active: true },
+  { id: "swimmingPool-hourly", facilityId: "swimmingPool", days: ALL_DAYS, startMinutes: 0, endMinutes: 1440, pricePerHour: 200, priority: 1, active: true },
+  { id: "carrom-hourly", facilityId: "carrom", days: ALL_DAYS, startMinutes: 0, endMinutes: 1440, pricePerHour: 150, priority: 1, active: true },
+];
+
 // ---------------------------------------------------------------------------
 // Firestore CRUD — used by admin/pricing.html and by booking.html/booking-
 // engine.js to fetch the rule set before calling computePrice() below.
@@ -33,13 +55,14 @@ export async function listPricingRules(facilityId = null) {
   const col = collection(db, RULES_COL);
   const q = facilityId ? query(col, where("facilityId", "==", facilityId)) : query(col, orderBy("priority", "desc"));
   const snap = await getDocs(q);
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  const rows = snap.empty ? DEFAULT_PRICING_RULES : snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  return facilityId ? rows.filter((r) => r.facilityId === facilityId) : rows;
 }
 
 /** Every ACTIVE rule across all facilities — what the booking engine needs. */
 export async function listActivePricingRules() {
   const snap = await getDocs(query(collection(db, RULES_COL), where("active", "==", true)));
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  return snap.empty ? DEFAULT_PRICING_RULES : snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 }
 
 export async function createPricingRule(rule) {

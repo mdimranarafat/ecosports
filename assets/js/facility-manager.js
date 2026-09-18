@@ -22,18 +22,27 @@ import { logAudit } from "./reports.js";
 
 const COL = "facilities";
 
+// Frenzy Arena catalog imported as the initial EcoSports catalog. Firestore
+// documents override this fallback as soon as the admin creates/edits facilities.
+export const DEFAULT_FACILITIES = [
+  { id: "sixASideTurf", name: "6A Side Turf", slug: "six-a-side-turf", description: "Artificial futsal turf for five-a-side matches and practice sessions.", imageUrl: "", icon: "⚽", active: true, displayOrder: 1, openingTime: "00:00", closingTime: "23:59", slotIntervalMinutes: 30, minDurationMinutes: 60, maxDurationMinutes: 180, allowOvernight: false },
+  { id: "fourASideTurf", name: "4A Side Turf", slug: "four-a-side-turf", description: "Compact artificial turf for quick games, training, and small-sided matches.", imageUrl: "", icon: "⚽", active: true, displayOrder: 2, openingTime: "00:00", closingTime: "23:59", slotIntervalMinutes: 30, minDurationMinutes: 60, maxDurationMinutes: 180, allowOvernight: false },
+  { id: "swimmingPool", name: "Swimming Pool", slug: "swimming-pool", description: "A dedicated swimming pool for training, practice, and recreational sessions.", imageUrl: "", icon: "🏊", active: true, displayOrder: 3, openingTime: "00:00", closingTime: "23:59", slotIntervalMinutes: 30, minDurationMinutes: 60, maxDurationMinutes: 180, allowOvernight: false },
+  { id: "carrom", name: "Carrom", slug: "carrom", description: "Indoor carrom boards for a relaxed game between matches.", imageUrl: "", icon: "🎯", active: true, displayOrder: 4, openingTime: "00:00", closingTime: "23:59", slotIntervalMinutes: 30, minDurationMinutes: 60, maxDurationMinutes: 180, allowOvernight: false },
+];
+
 /** Public-facing: only active facilities, in admin-configured display order. */
 export async function getActiveFacilities() {
   const q = query(collection(db, COL), where("active", "==", true), orderBy("displayOrder", "asc"));
   const snap = await getDocs(q);
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  return snap.empty ? DEFAULT_FACILITIES : snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 }
 
 /** Admin-facing: every facility regardless of active state. */
 export async function getAllFacilities() {
   const q = query(collection(db, COL), orderBy("displayOrder", "asc"));
   const snap = await getDocs(q);
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  return snap.empty ? DEFAULT_FACILITIES : snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 }
 
 export async function getFacility(facilityId) {
