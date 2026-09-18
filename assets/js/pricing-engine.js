@@ -22,6 +22,10 @@ import {
 import { logAudit } from "./reports.js";
 
 const RULES_COL = "pricingRules";
+const getDocsWithTimeout = (q) => Promise.race([
+  getDocs(q),
+  new Promise((_, reject) => setTimeout(() => reject(new Error("pricing query timeout")), 4000)),
+]);
 
 // Frenzy Arena pricing imported into the EcoSports schema. Prices are in BDT.
 const ALL_DAYS = [0, 1, 2, 3, 4, 5, 6];
@@ -55,7 +59,7 @@ export async function listPricingRules(facilityId = null) {
   const col = collection(db, RULES_COL);
   const q = facilityId ? query(col, where("facilityId", "==", facilityId)) : query(col, orderBy("priority", "desc"));
   try {
-    const snap = await getDocs(q);
+    const snap = await getDocsWithTimeout(q);
     const rows = snap.empty ? DEFAULT_PRICING_RULES : snap.docs.map((d) => ({ id: d.id, ...d.data() }));
     return facilityId ? rows.filter((r) => r.facilityId === facilityId) : rows;
   } catch {
@@ -66,7 +70,7 @@ export async function listPricingRules(facilityId = null) {
 /** Every ACTIVE rule across all facilities — what the booking engine needs. */
 export async function listActivePricingRules() {
   try {
-    const snap = await getDocs(query(collection(db, RULES_COL), where("active", "==", true)));
+    const snap = await getDocsWithTimeout(query(collection(db, RULES_COL), where("active", "==", true)));
     return snap.empty ? DEFAULT_PRICING_RULES : snap.docs.map((d) => ({ id: d.id, ...d.data() }));
   } catch {
     return DEFAULT_PRICING_RULES;

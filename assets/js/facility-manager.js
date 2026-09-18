@@ -21,6 +21,10 @@ import {
 import { logAudit } from "./reports.js";
 
 const COL = "facilities";
+const getDocsWithTimeout = (q) => Promise.race([
+  getDocs(q),
+  new Promise((_, reject) => setTimeout(() => reject(new Error("facilities query timeout")), 4000)),
+]);
 
 // Frenzy Arena catalog imported as the initial EcoSports catalog. Firestore
 // documents override this fallback as soon as the admin creates/edits facilities.
@@ -35,7 +39,7 @@ export const DEFAULT_FACILITIES = [
 export async function getActiveFacilities() {
   const q = query(collection(db, COL), where("active", "==", true), orderBy("displayOrder", "asc"));
   try {
-    const snap = await getDocs(q);
+    const snap = await getDocsWithTimeout(q);
     return snap.empty ? DEFAULT_FACILITIES : snap.docs.map((d) => ({ id: d.id, ...d.data() }));
   } catch {
     return DEFAULT_FACILITIES;
@@ -46,7 +50,7 @@ export async function getActiveFacilities() {
 export async function getAllFacilities() {
   const q = query(collection(db, COL), orderBy("displayOrder", "asc"));
   try {
-    const snap = await getDocs(q);
+    const snap = await getDocsWithTimeout(q);
     return snap.empty ? DEFAULT_FACILITIES : snap.docs.map((d) => ({ id: d.id, ...d.data() }));
   } catch {
     return DEFAULT_FACILITIES;
