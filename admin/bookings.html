@@ -121,11 +121,11 @@
   import { getBusinessSettings } from "../assets/js/settings-manager.js";
   import { db } from "../assets/js/firebase-config.js";
   import { collection, getDocs, query, where, orderBy, limit as fbLimit } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-  import { minutesToTimeStr, timeStrToMinutes } from "/assets/js/utils.js";
+  import { minutesToTimeStr, timeStrToMinutes } from "../assets/js/utils.js";
   import {
     createBooking, setBookingStatus, previewRecurringOccurrences,
     generateWeeklyOccurrences, createRecurringBookings, SlotConflictError, ValidationError,
-  } from "/assets/js/booking-engine.js";
+  } from "../assets/js/booking-engine.js";
 
   const { user, profile } = await initAdminLayout({ activePage: "bookings", permission: "bookings.view" });
   const canEdit = profile.role === "super_admin" || profile.permissions?.["bookings.edit"];
@@ -315,7 +315,7 @@
           overridePrice = { originalPrice: original, discountAmount: discount, finalPrice: Math.max(0, original - discount), pricingRuleId: null, offerId: null };
         }
 
-        const { upsertCustomerOnBooking } = await import("/assets/js/customer-manager.js");
+        const { upsertCustomerOnBooking } = await import("../assets/js/customer-manager.js");
         const result = await createBooking({ ...base, date, startMinutes, durationMinutes, overridePrice });
         await upsertCustomerOnBooking(result, { isNew: true });
         showToast(`Booking ${result.bookingId} created.`);

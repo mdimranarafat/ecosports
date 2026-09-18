@@ -54,15 +54,23 @@ export const DEFAULT_PRICING_RULES = [
 export async function listPricingRules(facilityId = null) {
   const col = collection(db, RULES_COL);
   const q = facilityId ? query(col, where("facilityId", "==", facilityId)) : query(col, orderBy("priority", "desc"));
-  const snap = await getDocs(q);
-  const rows = snap.empty ? DEFAULT_PRICING_RULES : snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-  return facilityId ? rows.filter((r) => r.facilityId === facilityId) : rows;
+  try {
+    const snap = await getDocs(q);
+    const rows = snap.empty ? DEFAULT_PRICING_RULES : snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    return facilityId ? rows.filter((r) => r.facilityId === facilityId) : rows;
+  } catch {
+    return facilityId ? DEFAULT_PRICING_RULES.filter((r) => r.facilityId === facilityId) : DEFAULT_PRICING_RULES;
+  }
 }
 
 /** Every ACTIVE rule across all facilities — what the booking engine needs. */
 export async function listActivePricingRules() {
-  const snap = await getDocs(query(collection(db, RULES_COL), where("active", "==", true)));
-  return snap.empty ? DEFAULT_PRICING_RULES : snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  try {
+    const snap = await getDocs(query(collection(db, RULES_COL), where("active", "==", true)));
+    return snap.empty ? DEFAULT_PRICING_RULES : snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  } catch {
+    return DEFAULT_PRICING_RULES;
+  }
 }
 
 export async function createPricingRule(rule) {

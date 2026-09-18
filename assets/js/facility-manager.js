@@ -34,15 +34,23 @@ export const DEFAULT_FACILITIES = [
 /** Public-facing: only active facilities, in admin-configured display order. */
 export async function getActiveFacilities() {
   const q = query(collection(db, COL), where("active", "==", true), orderBy("displayOrder", "asc"));
-  const snap = await getDocs(q);
-  return snap.empty ? DEFAULT_FACILITIES : snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  try {
+    const snap = await getDocs(q);
+    return snap.empty ? DEFAULT_FACILITIES : snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  } catch {
+    return DEFAULT_FACILITIES;
+  }
 }
 
 /** Admin-facing: every facility regardless of active state. */
 export async function getAllFacilities() {
   const q = query(collection(db, COL), orderBy("displayOrder", "asc"));
-  const snap = await getDocs(q);
-  return snap.empty ? DEFAULT_FACILITIES : snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  try {
+    const snap = await getDocs(q);
+    return snap.empty ? DEFAULT_FACILITIES : snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  } catch {
+    return DEFAULT_FACILITIES;
+  }
 }
 
 export async function getFacility(facilityId) {
