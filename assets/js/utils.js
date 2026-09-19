@@ -17,6 +17,16 @@ export function minutesToTimeStr(mins) {
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}${nextDay ? " (+1)" : ""}`;
 }
 
+/** Format minutes since midnight as a customer-friendly 12-hour time. */
+export function minutesToAmPm(mins) {
+  const wrapped = ((mins % 1440) + 1440) % 1440;
+  const h24 = Math.floor(wrapped / 60);
+  const minute = wrapped % 60;
+  const suffix = h24 >= 12 ? "PM" : "AM";
+  const hour = h24 % 12 || 12;
+  return `${hour}:${String(minute).padStart(2, "0")} ${suffix}${mins >= 1440 ? " (+1 day)" : ""}`;
+}
+
 /** Half-open interval overlap test: [aStart,aEnd) intersects [bStart,bEnd). */
 export function rangesOverlap(aStart, aEnd, bStart, bEnd) {
   return aStart < bEnd && bStart < aEnd;

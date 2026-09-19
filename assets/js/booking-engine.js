@@ -15,7 +15,7 @@ import {
   serverTimestamp,
   Timestamp,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-import { rangesOverlap, toLocalDate, generateBookingId, isValidPhone, isValidEmail } from "./utils.js";
+import { rangesOverlap, toLocalDate, generateBookingId, isValidPhone, isValidEmail, todayISO } from "./utils.js";
 import { computePrice } from "./pricing-engine.js";
 import { logAudit } from "./reports.js";
 import { getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
@@ -37,6 +37,13 @@ function validateBookingInput(input) {
   if (!isValidPhone(input.customerPhone || "")) throw new ValidationError("A valid phone number is required.");
   if (!isValidEmail(input.customerEmail)) throw new ValidationError("Email address looks invalid.");
   if (!input.date) throw new ValidationError("Date is required.");
+  const today = todayISO();
+  if (input.date < today) throw new ValidationError("Past dates cannot be booked.");
+  if (input.date === today) {
+    const now = new Date();
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+    if (input.startMinutes < currentMinutes) throw new ValidationError("This time has already passed. Please choose another slot.");
+  }
   if (input.durationMinutes <= 0) throw new ValidationError("Duration must be greater than zero.");
   if (input.startMinutes < 0) throw new ValidationError("Invalid start time.");
 }

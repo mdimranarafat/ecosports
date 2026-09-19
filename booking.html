@@ -103,7 +103,7 @@
   import { collection, getDocs, query, where } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
   import { getBusinessSettings } from "./assets/js/settings-manager.js";
   import { createBooking, SlotConflictError, ValidationError } from "./assets/js/booking-engine.js";
-  import { minutesToTimeStr } from "./assets/js/utils.js";
+  import { minutesToAmPm } from "./assets/js/utils.js";
 
   initLayout();
 
@@ -197,7 +197,7 @@
     document.getElementById("summary-filled").style.display = "block";
     document.getElementById("s-facility").textContent = selectedFacility.name;
     document.getElementById("s-date").textContent = selectedSlot.date;
-    document.getElementById("s-time").textContent = `${minutesToTimeStr(selectedSlot.startMinutes)} (${selectedSlot.durationMinutes} min)`;
+    document.getElementById("s-time").textContent = `${minutesToAmPm(selectedSlot.startMinutes)} (${selectedSlot.durationMinutes} min)`;
     document.getElementById("s-original").textContent = `${priceResult.originalPrice} BDT`;
     if (priceResult.discountAmount > 0) {
       document.getElementById("s-discount-row").style.display = "flex";

@@ -95,7 +95,7 @@
     <hr class="es-divider" style="margin:16px 0;" />
 
     <div class="es-flex es-gap-3">
-      <div class="es-field" style="flex:1;"><label class="es-label">Custom Price (BDT, optional override)</label><input class="es-input" type="number" id="m-price" /></div>
+      <div class="es-field" style="flex:1;"><label class="es-label">Custom Price / Extra Discount (BDT)</label><input class="es-input" type="number" min="0" id="m-price" placeholder="Amount to subtract" /></div>
       <div class="es-field" style="flex:1;"><label class="es-label">Discount (BDT)</label><input class="es-input" type="number" id="m-discount" value="0" /></div>
     </div>
     <div class="es-flex es-gap-3">
@@ -108,6 +108,7 @@
       <div class="es-field" style="flex:1;"><label class="es-label">Paid Amount</label><input class="es-input" type="number" id="m-paid" value="0" /></div>
     </div>
     <div class="es-field"><label class="es-label">Note</label><textarea class="es-input" id="m-note" rows="2"></textarea></div>
+    <div id="m-price-preview" class="es-card" style="padding:12px;margin:12px 0;font-size:0.85rem;display:none;"></div>
 
     <p id="modal-error" style="color:var(--es-red);font-size:0.85rem;display:none;"></p>
     <button class="es-btn es-btn--primary es-btn--block" id="m-submit">Create Booking</button>
@@ -121,7 +122,7 @@
   import { getBusinessSettings } from "../assets/js/settings-manager.js";
   import { db } from "../assets/js/firebase-config.js";
   import { collection, getDocs, query, where, orderBy, limit as fbLimit } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-  import { minutesToTimeStr, timeStrToMinutes } from "../assets/js/utils.js";
+  import { minutesToAmPm, timeStrToMinutes, todayISO } from "../assets/js/utils.js";
   import {
     createBooking, setBookingStatus, previewRecurringOccurrences,
     generateWeeklyOccurrences, createRecurringBookings, SlotConflictError, ValidationError,
@@ -143,6 +144,28 @@
 
   document.getElementById("f-facility").innerHTML += facilities.map((f) => `<option value="${f.id}">${f.name}</option>`).join("");
   document.getElementById("m-facility").innerHTML = facilities.map((f) => `<option value="${f.id}">${f.name}</option>`).join("");
+  document.getElementById("m-date").min = todayISO();
+  document.getElementById("m-r-start").min = todayISO();
+  document.getElementById("m-r-end").min = todayISO();
+
+  function updateManualPricePreview() {
+    const date = document.getElementById("m-date").value;
+    const start = document.getElementById("m-start").value;
+    const duration = Number(document.getElementById("m-duration").value);
+    const facility = facilities.find((f) => f.id === document.getElementById("m-facility").value);
+    const preview = document.getElementById("m-price-preview");
+    if (!facility || !date || !start || !duration) { preview.style.display = "none"; return; }
+    try {
+      const basePrice = computePrice({ facilityId: facility.id, dateISO: date, startMinutes: timeStrToMinutes(start), durationMinutes: duration, rules, offers, settings });
+      const extraDiscount = Math.max(0, Number(document.getElementById("m-price").value) || 0);
+      const manualDiscount = Math.max(0, Number(document.getElementById("m-discount").value) || 0);
+      const totalDiscount = basePrice.discountAmount + extraDiscount + manualDiscount;
+      preview.style.display = "block";
+      preview.innerHTML = `<strong>Amount Preview</strong><br>Original: ${basePrice.originalPrice} BDT · Discount: ${totalDiscount} BDT · <strong>Total: ${Math.max(0, basePrice.finalPrice - extraDiscount - manualDiscount)} BDT</strong>`;
+    } catch { preview.style.display = "none"; }
+  }
+  ["m-facility", "m-date", "m-start", "m-duration", "m-price", "m-discount"].forEach((id) => document.getElementById(id).addEventListener("input", updateManualPricePreview));
+  document.getElementById("m-facility").addEventListener("change", updateManualPricePreview);
   document.getElementById("m-r-weekdays").innerHTML = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"]
     .map((d, i) => `<label style="display:flex;align-items:center;gap:4px;font-size:0.8rem;"><input type="checkbox" value="${i}" class="m-weekday" />${d}</label>`)
     .join("");
@@ -205,7 +228,7 @@
       <td data-label="Booking ID" class="es-mono">${b.bookingId || b.id}</td>
       <td data-label="Customer">${b.customerName}<br/><span style="color:var(--es-moss);font-size:0.8rem;">${b.customerPhone}</span></td>
       <td data-label="Facility">${b.facilityName}</td>
-      <td data-label="Date / Time" class="es-mono">${b.date}<br/>${minutesToTimeStr(b.startMinutes)}–${minutesToTimeStr(b.endMinutes)}</td>
+      <td data-label="Date / Time" class="es-mono">${b.date}<br/>${minutesToAmPm(b.startMinutes)}–${minutesToAmPm(b.endMinutes)}</td>
       <td data-label="Status"><span class="es-status-pill es-status-pill--${b.status}">${b.status.replace("_"," ")}</span></td>
       <td data-label="Payment"><span class="es-badge es-badge--${b.paymentStatus}">${b.paymentStatus}</span></td>
       <td data-label="Total" class="es-mono">${b.finalPrice} BDT</td>
@@ -268,7 +291,7 @@
     document.getElementById("m-r-preview-results").innerHTML = `
       <p style="font-size:0.85rem;">${checked.filter((o) => o.available).length} available, ${checked.filter((o) => !o.available).length} conflicting of ${checked.length} occurrences.</p>
       <div style="max-height:160px;overflow-y:auto;font-size:0.8rem;" class="es-mono">
-        ${checked.map((o) => `<div style="color:${o.available ? "var(--es-lime)" : "var(--es-red)"}">${o.date} ${minutesToTimeStr(o.startMinutes)} — ${o.available ? "Available" : "Conflict"}</div>`).join("")}
+        ${checked.map((o) => `<div style="color:${o.available ? "var(--es-lime)" : "var(--es-red)"}">${o.date} ${minutesToAmPm(o.startMinutes)} — ${o.available ? "Available" : "Conflict"}</div>`).join("")}
       </div>`;
     modal.dataset.previewedOccurrences = JSON.stringify(checked);
   });
@@ -309,11 +332,10 @@
         const startMinutes = timeStrToMinutes(document.getElementById("m-start").value);
         const durationMinutes = Number(document.getElementById("m-duration").value);
 
-        let overridePrice = null;
-        if (customPrice) {
-          const original = Number(customPrice);
-          overridePrice = { originalPrice: original, discountAmount: discount, finalPrice: Math.max(0, original - discount), pricingRuleId: null, offerId: null };
-        }
+        const basePrice = computePrice({ facilityId: facility.id, dateISO: date, startMinutes, durationMinutes, rules, offers, settings });
+        const customDiscount = Math.max(0, Number(customPrice) || 0);
+        const totalDiscount = basePrice.discountAmount + customDiscount + discount;
+        const overridePrice = { ...basePrice, originalPrice: basePrice.originalPrice, discountAmount: totalDiscount, finalPrice: Math.max(0, basePrice.finalPrice - customDiscount - discount) };
 
         const { upsertCustomerOnBooking } = await import("../assets/js/customer-manager.js");
         const result = await createBooking({ ...base, date, startMinutes, durationMinutes, overridePrice });

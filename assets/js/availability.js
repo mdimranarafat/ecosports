@@ -6,7 +6,7 @@
 
 import { db } from "./firebase-config.js";
 import { collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-import { rangesOverlap, timeStrToMinutes, minutesToTimeStr } from "./utils.js";
+import { rangesOverlap, timeStrToMinutes, minutesToAmPm, todayISO } from "./utils.js";
 
 const ACTIVE_STATUSES = ["pending", "approved", "confirmed"];
 
@@ -41,6 +41,9 @@ export async function buildSlotGrid(facility, dateISO, durationMinutes) {
   if (facility.allowOvernight && close <= open) close += 1440; // crosses midnight
 
   const interval = facility.slotIntervalMinutes || 30;
+  const now = new Date();
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+  const isToday = dateISO === todayISO();
   const slots = [];
 
   for (let start = open; start + durationMinutes <= close; start += interval) {
@@ -49,8 +52,8 @@ export async function buildSlotGrid(facility, dateISO, durationMinutes) {
     slots.push({
       startMinutes: start,
       endMinutes: end,
-      label: minutesToTimeStr(start),
-      available: !conflict,
+      label: minutesToAmPm(start),
+      available: !conflict && (!isToday || start >= currentMinutes),
     });
   }
 
