@@ -15,7 +15,7 @@ import {
   serverTimestamp,
   Timestamp,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-import { rangesOverlap, toLocalDate, generateBookingId, isValidPhone, isValidEmail, todayISO } from "./utils.js";
+import { rangesOverlap, toLocalDate, generateBookingId, isValidPhone, isValidEmail, todayISO } from "./utils.js?v=abd8c48";
 import { computePrice } from "./pricing-engine.js";
 import { logAudit } from "./reports.js";
 import { getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
@@ -95,7 +95,7 @@ export async function createBooking(input) {
       where("date", "==", input.date),
       where("status", "in", ACTIVE_STATUSES)
     );
-    const existingSnap = await getDocs(q); // transactional get() constrained to a query is supported via getDocs inside runTransaction in SDK v10 (falls back to tx.get for doc refs below)
+    const existingSnap = await tx.get(q);
 
     for (const docSnap of existingSnap.docs) {
       const b = docSnap.data();
@@ -104,15 +104,13 @@ export async function createBooking(input) {
       }
     }
 
-    const bookingId = generateBookingId(input.date, existingSnap.size + 1);
+    const bookingId = `${generateBookingId(input.date, existingSnap.size + 1)}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
     const ref = doc(db, "bookings", bookingId);
 
     // Re-check the exact doc id isn't already taken (extremely unlikely
     // collision on the human-readable sequence number, but cheap to guard).
     const existingDoc = await tx.get(ref);
-    if (existingDoc.exists()) {
-      throw new SlotConflictError();
-    }
+    if (existingDoc.exists()) throw new Error("Booking reference collision. Please try again.");
 
     const startDate = toLocalDate(input.date, input.startMinutes);
     const endDate = toLocalDate(input.date, endMinutes);

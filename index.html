@@ -106,8 +106,8 @@
   // ✅ Fixed JS Import Relative Paths (Added "./")
   import { initLayout } from "./assets/js/layout.js";
   import { getActiveFacilities } from "./assets/js/facility-manager.js?v=c40b77d";
-  import { buildSlotGrid } from "./assets/js/availability.js?v=38d088d";
-  import { minutesToTimeStr } from "./assets/js/utils.js";
+  import { buildSlotGrid } from "./assets/js/availability.js?v=abd8c48";
+  import { minutesToTimeStr, todayISO } from "./assets/js/utils.js?v=abd8c48";
   import { db } from "./assets/js/firebase-config.js";
   import { collection, getDocs, query, where } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
@@ -177,8 +177,8 @@
     return `${dayLabel}${o.startTime != null ? ` · ${minutesToTimeStr(o.startTime)}–${minutesToTimeStr(o.endTime)}` : ""}`;
   }
 
-  document.getElementById("qb-date").min = new Date().toISOString().slice(0, 10);
-  document.getElementById("qb-date").value = new Date().toISOString().slice(0, 10);
+  document.getElementById("qb-date").min = todayISO();
+  document.getElementById("qb-date").value = todayISO();
 
   document.getElementById("qb-check").addEventListener("click", async () => {
     const facilityId = document.getElementById("qb-facility").value;
@@ -189,7 +189,13 @@
     if (!facility || !date) return;
 
     resultsEl.innerHTML = `<div class="es-card es-mt-4"><p>Checking availability…</p></div>`;
-    const slots = await buildSlotGrid(facility, date, duration);
+    let slots;
+    try {
+      slots = await buildSlotGrid(facility, date, duration);
+    } catch (err) {
+      resultsEl.innerHTML = `<div class="es-card es-mt-4"><p style="color:var(--es-red);">${err.message}</p></div>`;
+      return;
+    }
     resultsEl.innerHTML = `
       <div class="es-card es-mt-4">
         <h3 style="margin-top:0;">${facility.name} — ${date}</h3>

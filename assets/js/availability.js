@@ -6,7 +6,7 @@
 
 import { db } from "./firebase-config.js";
 import { collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-import { rangesOverlap, timeStrToMinutes, minutesToAmPm, todayISO } from "./utils.js";
+import { rangesOverlap, timeStrToMinutes, minutesToAmPm, todayISO } from "./utils.js?v=abd8c48";
 
 const ACTIVE_STATUSES = ["pending", "approved", "confirmed"];
 const getDocsWithTimeout = (q) => Promise.race([
@@ -26,7 +26,7 @@ export async function getBookingsForFacilityDate(facilityId, dateISO) {
     const snap = await getDocsWithTimeout(q);
     return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
   } catch {
-    return [];
+    throw new Error("Availability is temporarily unavailable. Please try again.");
   }
 }
 
@@ -43,6 +43,7 @@ export async function isSlotAvailable(facilityId, dateISO, startMinutes, duratio
  * time, slot interval, and min/max duration — for the "quick booking" UI.
  */
 export async function buildSlotGrid(facility, dateISO, durationMinutes) {
+  if (dateISO < todayISO()) return [];
   const existing = await getBookingsForFacilityDate(facility.id, dateISO);
   const open = timeStrToMinutes(facility.openingTime);
   let close = timeStrToMinutes(facility.closingTime);
@@ -55,13 +56,15 @@ export async function buildSlotGrid(facility, dateISO, durationMinutes) {
   const slots = [];
 
   for (let start = open; start + durationMinutes <= close; start += interval) {
+    if (isToday && start < currentMinutes) continue;
     const end = start + durationMinutes;
-    const conflict = existing.some((b) => rangesOverlap(start, end, b.startMinutes, b.endMinutes));
+    const booked = existing.find((b) => rangesOverlap(start, end, b.startMinutes, b.endMinutes));
     slots.push({
       startMinutes: start,
       endMinutes: end,
       label: minutesToAmPm(start),
-      available: !conflict && (!isToday || start >= currentMinutes),
+      available: !booked,
+      bookedBy: booked?.customerName || "",
     });
   }
 

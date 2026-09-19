@@ -15,10 +15,15 @@ let cached = null;
 /** Cached after first successful read for the lifetime of the page — settings rarely change mid-session. */
 export async function getBusinessSettings() {
   if (cached) return cached;
-  const snap = await getDoc(doc(db, ...SETTINGS_DOC));
-  cached = snap.exists()
-    ? { ...defaultFullSettings(), ...snap.data() }
-    : defaultFullSettings();
+  try {
+    const snap = await Promise.race([
+      getDoc(doc(db, ...SETTINGS_DOC)),
+      new Promise((_, reject) => setTimeout(() => reject(new Error("settings timeout")), 2500)),
+    ]);
+    cached = snap.exists() ? { ...defaultFullSettings(), ...snap.data() } : defaultFullSettings();
+  } catch {
+    cached = defaultFullSettings();
+  }
   return cached;
 }
 

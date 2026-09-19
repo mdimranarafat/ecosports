@@ -97,13 +97,13 @@
   // ✅ Fixed JS Import Paths (Changed to relative "./assets/js/...")
   import { initLayout } from "./assets/js/layout.js";
   import { getActiveFacilities } from "./assets/js/facility-manager.js?v=c40b77d";
-  import { buildSlotGrid } from "./assets/js/availability.js?v=38d088d";
+  import { buildSlotGrid } from "./assets/js/availability.js?v=abd8c48";
   import { listActivePricingRules, computePrice, NoPricingRuleError } from "./assets/js/pricing-engine.js?v=c40b77d";
   import { db } from "./assets/js/firebase-config.js";
   import { collection, getDocs, query, where } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
   import { getBusinessSettings } from "./assets/js/settings-manager.js";
-  import { createBooking, SlotConflictError, ValidationError } from "./assets/js/booking-engine.js";
-  import { minutesToAmPm } from "./assets/js/utils.js";
+  import { createBooking, SlotConflictError, ValidationError } from "./assets/js/booking-engine.js?v=abd8c48";
+  import { minutesToAmPm, todayISO, escapeHtml } from "./assets/js/utils.js?v=abd8c48";
 
   initLayout();
 
@@ -112,15 +112,18 @@
 
   async function init() {
     [facilities, rules, settings] = await Promise.all([getActiveFacilities(), listActivePricingRules(), getBusinessSettings()]);
-    const offerSnap = await getDocs(query(collection(db, "offers"), where("active", "==", true)));
+    const offerSnap = await Promise.race([
+      getDocs(query(collection(db, "offers"), where("active", "==", true))),
+      new Promise((_, reject) => setTimeout(() => reject(new Error("offers timeout")), 2500)),
+    ]).catch(() => ({ docs: [] }));
     offers = offerSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
 
     const facilitySelect = document.getElementById("f-facility");
     facilitySelect.innerHTML = facilities.map((f) => `<option value="${f.id}">${f.name}</option>`).join("");
     if (params.get("facility")) facilitySelect.value = params.get("facility");
 
-    document.getElementById("f-date").min = new Date().toISOString().slice(0, 10);
-    document.getElementById("f-date").value = params.get("date") || new Date().toISOString().slice(0, 10);
+    document.getElementById("f-date").min = todayISO();
+    document.getElementById("f-date").value = params.get("date") && params.get("date") >= todayISO() ? params.get("date") : todayISO();
 
     onFacilityChange();
     facilitySelect.addEventListener("change", onFacilityChange);
@@ -149,9 +152,15 @@
     const grid = document.getElementById("slot-grid");
     grid.innerHTML = `<p style="color:var(--es-moss);">Loading availability…</p>`;
 
-    const slots = await buildSlotGrid(selectedFacility, date, duration);
+    let slots;
+    try {
+      slots = await buildSlotGrid(selectedFacility, date, duration);
+    } catch (err) {
+      grid.innerHTML = `<p style="color:var(--es-red);">${err.message}</p>`;
+      return;
+    }
     grid.innerHTML = slots
-      .map((s) => `<div class="es-slot ${s.available ? "" : "is-unavailable"}" data-start="${s.startMinutes}">${s.label}</div>`)
+      .map((s) => `<div class="es-slot ${s.available ? "" : "is-unavailable"}" data-start="${s.startMinutes}"><span>${s.label}</span>${s.bookedBy ? `<small class="es-slot__booked-by">Booked by ${escapeHtml(s.bookedBy)}</small>` : ""}</div>`)
       .join("") || `<p style="color:var(--es-moss);">No slots available for this duration.</p>`;
 
     grid.querySelectorAll(".es-slot:not(.is-unavailable)").forEach((el) => {

@@ -27,6 +27,10 @@ export function minutesToAmPm(mins) {
   return `${hour}:${String(minute).padStart(2, "0")} ${suffix}${mins >= 1440 ? " (+1 day)" : ""}`;
 }
 
+export function escapeHtml(value = "") {
+  return String(value).replace(/[&<>'"]/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" }[ch]));
+}
+
 /** Half-open interval overlap test: [aStart,aEnd) intersects [bStart,bEnd). */
 export function rangesOverlap(aStart, aEnd, bStart, bEnd) {
   return aStart < bEnd && bStart < aEnd;
