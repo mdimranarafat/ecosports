@@ -9,6 +9,10 @@ import { collection, query, where, getDocs } from "https://www.gstatic.com/fireb
 import { rangesOverlap, timeStrToMinutes, minutesToAmPm, todayISO } from "./utils.js";
 
 const ACTIVE_STATUSES = ["pending", "approved", "confirmed"];
+const getDocsWithTimeout = (q) => Promise.race([
+  getDocs(q),
+  new Promise((_, reject) => setTimeout(() => reject(new Error("availability query timeout")), 4000)),
+]);
 
 /** Fetch all non-cancelled bookings for a single facility+date. Cheap, indexed query. */
 export async function getBookingsForFacilityDate(facilityId, dateISO) {
@@ -18,8 +22,12 @@ export async function getBookingsForFacilityDate(facilityId, dateISO) {
     where("date", "==", dateISO),
     where("status", "in", ACTIVE_STATUSES)
   );
-  const snap = await getDocs(q);
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  try {
+    const snap = await getDocsWithTimeout(q);
+    return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  } catch {
+    return [];
+  }
 }
 
 /** Is [startMinutes, startMinutes+durationMinutes) free for this facility/date? */
