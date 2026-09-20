@@ -342,9 +342,16 @@
         const totalDiscount = basePrice.discountAmount + customDiscount + discount;
         const overridePrice = { ...basePrice, originalPrice: basePrice.originalPrice, discountAmount: totalDiscount, finalPrice: Math.max(0, basePrice.finalPrice - customDiscount - discount) };
 
-        const { upsertCustomerOnBooking } = await import("../assets/js/customer-manager.js");
         const result = await createBooking({ ...base, date, startMinutes, durationMinutes, overridePrice });
-        await upsertCustomerOnBooking(result, { isNew: true });
+        // Customer roll-up is optional bookkeeping; it must never make a
+        // successfully-created booking appear to have failed if the staff
+        // account lacks customers.view/write permission.
+        try {
+          const { upsertCustomerOnBooking } = await import("../assets/js/customer-manager.js");
+          await upsertCustomerOnBooking(result, { isNew: true });
+        } catch (customerErr) {
+          console.warn("Customer profile sync skipped after booking creation:", customerErr);
+        }
         showToast(`Booking ${result.bookingId} created.`);
       }
       modal.style.display = "none";
