@@ -47,7 +47,9 @@ function facilityKind(value = "") {
 function canonicalizeFacilities(docs) {
   return DEFAULT_FACILITIES.map((fallback) => {
     const match = docs.find((f) => f.id === fallback.id || facilityKind(f.id) === fallback.id || facilityKind(f.slug) === fallback.id || facilityKind(f.name) === fallback.id);
-    return match ? { ...fallback, ...match, name: fallback.name, slug: fallback.slug, icon: fallback.icon, displayOrder: fallback.displayOrder } : fallback;
+    // Keep the canonical ID even when Firestore contains a legacy document ID.
+    // Pricing rules, booking slots, and bookings all use this stable ID.
+    return match ? { ...fallback, ...match, id: fallback.id, name: fallback.name, slug: fallback.slug, icon: fallback.icon, displayOrder: fallback.displayOrder } : fallback;
   });
 }
 

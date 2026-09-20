@@ -301,6 +301,7 @@
     errorEl.style.display = "none";
     const type = document.getElementById("m-type").value;
     const facility = facilities.find((f) => f.id === document.getElementById("m-facility").value);
+    if (!facility) { errorEl.textContent = "Please select a facility."; errorEl.style.display = "block"; return; }
     const customPrice = document.getElementById("m-price").value;
     const discount = Number(document.getElementById("m-discount").value) || 0;
     const paidAmount = Number(document.getElementById("m-paid").value) || 0;
@@ -329,8 +330,12 @@
         showToast(`Created ${created.length} recurring bookings.`);
       } else {
         const date = document.getElementById("m-date").value;
-        const startMinutes = timeStrToMinutes(document.getElementById("m-start").value);
+        const startValue = document.getElementById("m-start").value;
+        const startMinutes = timeStrToMinutes(startValue);
         const durationMinutes = Number(document.getElementById("m-duration").value);
+        if (!date || !startValue || !Number.isFinite(startMinutes) || !Number.isFinite(durationMinutes) || durationMinutes <= 0) {
+          throw new ValidationError("Date, start time, and a valid duration are required.");
+        }
 
         const basePrice = computePrice({ facilityId: facility.id, dateISO: date, startMinutes, durationMinutes, rules, offers, settings });
         const customDiscount = Math.max(0, Number(customPrice) || 0);
@@ -350,6 +355,9 @@
       } else {
         errorEl.textContent = "Something went wrong creating this booking.";
         console.error(err);
+      }
+      if (!(err instanceof SlotConflictError || err instanceof ValidationError) && err?.message) {
+        errorEl.textContent = err.message;
       }
       errorEl.style.display = "block";
     }
