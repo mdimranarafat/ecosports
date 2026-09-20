@@ -90,10 +90,10 @@ export async function createBooking(input) {
     // transaction's read-set becomes stale and Firestore automatically
     // retries it, guaranteeing serializable conflict detection.
     const q = query(
-      bookingsCol,
+      collection(db, "bookingSlots"),
       where("facilityId", "==", input.facilityId),
       where("date", "==", input.date),
-      where("status", "in", ACTIVE_STATUSES)
+      where("status", "==", "active")
     );
     const existingSnap = await tx.get(q);
 
@@ -151,6 +151,15 @@ export async function createBooking(input) {
     };
 
     tx.set(ref, bookingDoc);
+    tx.set(doc(db, "bookingSlots", bookingId), {
+      bookingId,
+      facilityId: input.facilityId,
+      date: input.date,
+      startMinutes: input.startMinutes,
+      endMinutes,
+      customerName: input.customerName.trim(),
+      status: "active",
+    });
     return { id: bookingId, ...bookingDoc };
   });
 
@@ -247,6 +256,13 @@ export async function setBookingStatus(bookingId, newStatus, performedBy) {
   }
 
   await updateDoc(ref, { status: newStatus, updatedAt: serverTimestamp() });
+  if (["cancelled", "rejected"].includes(newStatus)) {
+    try {
+      await updateDoc(doc(db, "bookingSlots", bookingId), { status: "cancelled" });
+    } catch {
+      // Legacy bookings may not have a public slot record.
+    }
+  }
   await logAudit({
     action: `booking.${newStatus}`,
     entityType: "booking",

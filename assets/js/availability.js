@@ -17,10 +17,10 @@ const getDocsWithTimeout = (q) => Promise.race([
 /** Fetch all non-cancelled bookings for a single facility+date. Cheap, indexed query. */
 export async function getBookingsForFacilityDate(facilityId, dateISO) {
   const q = query(
-    collection(db, "bookings"),
+    collection(db, "bookingSlots"),
     where("facilityId", "==", facilityId),
     where("date", "==", dateISO),
-    where("status", "in", ACTIVE_STATUSES)
+    where("status", "==", "active")
   );
   try {
     const snap = await getDocsWithTimeout(q);

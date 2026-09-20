@@ -114,6 +114,28 @@ service cloud.firestore {
     }
 
     // -------------------------------------------------------------------
+    // PUBLIC BOOKING SLOTS — deliberately contains only reservation display
+    // data needed for availability. Customer contact, pricing, and notes stay
+    // private in the bookings collection below.
+    // -------------------------------------------------------------------
+    match /bookingSlots/{slotId} {
+      allow read: if true;
+      allow create: if isValidPublicSlot() || hasPerm('bookings.create');
+      allow update, delete: if hasPerm('bookings.edit') || isSuperAdmin();
+
+      function isValidPublicSlot() {
+        let d = request.resource.data;
+        return d.status == 'active'
+          && d.bookingId is string
+          && d.facilityId is string
+          && d.date is string
+          && d.startMinutes is int
+          && d.endMinutes is int
+          && d.customerName is string && d.customerName.size() > 0;
+      }
+    }
+
+    // -------------------------------------------------------------------
     // BOOKINGS — the most sensitive collection.
     //
     // Public (unauthenticated) customers MAY create a booking, but:
