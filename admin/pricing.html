@@ -78,10 +78,10 @@
 
 <script type="module">
   import { initAdminLayout, showToast } from "../assets/js/admin-layout.js";
-  import { getActiveFacilities } from "../assets/js/facility-manager.js";
+  import { getActiveFacilities } from "../assets/js/facility-manager.js?v=57f7669";
   import { listPricingRules, createPricingRule, updatePricingRule, setPricingRuleActive, deletePricingRule } from "../assets/js/pricing-engine.js";
   import { getBusinessSettings, updateBusinessSettings } from "../assets/js/settings-manager.js";
-  import { timeStrToMinutes, minutesToTimeStr } from "../assets/js/utils.js";
+  import { timeStrToMinutes, minutesToTimeStr, minutesToAmPm } from "../assets/js/utils.js";
 
   await initAdminLayout({ activePage: "pricing", permission: "pricing.manage" });
 
@@ -123,7 +123,7 @@
         (r) => `<tr>
         <td data-label="Facility">${facilityName(r.facilityId)}</td>
         <td data-label="Days">${(r.days || []).map((d) => DAY_LABELS[d]).join(", ")}</td>
-        <td data-label="Time Window" class="es-mono">${minutesToTimeStr(r.startMinutes)}–${minutesToTimeStr(r.endMinutes)}</td>
+        <td data-label="Time Window" class="es-mono">${minutesToAmPm(r.startMinutes)}–${minutesToAmPm(r.endMinutes)}</td>
         <td data-label="Price" class="es-mono">${r.pricePerHour ? r.pricePerHour + "/hr" : "custom"}</td>
         <td data-label="Weekend Adj.">${r.weekendAdjustPercent ? "+" + r.weekendAdjustPercent + "%" : "—"}</td>
         <td data-label="Priority">${r.priority}</td>

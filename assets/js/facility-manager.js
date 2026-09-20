@@ -35,12 +35,28 @@ export const DEFAULT_FACILITIES = [
   { id: "carrom", name: "Carrom", slug: "carrom", description: "Indoor carrom boards for a relaxed game between matches.", imageUrl: "", icon: "🎯", active: true, displayOrder: 4, openingTime: "00:00", closingTime: "23:59", slotIntervalMinutes: 30, minDurationMinutes: 60, maxDurationMinutes: 180, allowOvernight: false },
 ];
 
+function facilityKind(value = "") {
+  const text = `${value}`.toLowerCase().replace(/[^a-z0-9]/g, "");
+  if (text.includes("swim") || text.includes("pool")) return "swimmingPool";
+  if (text.includes("carrom") || text.includes("carom")) return "carrom";
+  if (text.includes("four") || text.includes("4a") || text.includes("4side")) return "fourASideTurf";
+  if (text.includes("six") || text.includes("6a") || text.includes("6side")) return "sixASideTurf";
+  return null;
+}
+
+function canonicalizeFacilities(docs) {
+  return DEFAULT_FACILITIES.map((fallback) => {
+    const match = docs.find((f) => f.id === fallback.id || facilityKind(f.id) === fallback.id || facilityKind(f.slug) === fallback.id || facilityKind(f.name) === fallback.id);
+    return match ? { ...fallback, ...match, name: fallback.name, slug: fallback.slug, icon: fallback.icon, displayOrder: fallback.displayOrder } : fallback;
+  });
+}
+
 /** Public-facing: only active facilities, in admin-configured display order. */
 export async function getActiveFacilities() {
   const q = query(collection(db, COL), where("active", "==", true), orderBy("displayOrder", "asc"));
   try {
     const snap = await getDocsWithTimeout(q);
-    return snap.empty ? DEFAULT_FACILITIES : snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    return snap.empty ? DEFAULT_FACILITIES : canonicalizeFacilities(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
   } catch {
     return DEFAULT_FACILITIES;
   }
@@ -51,7 +67,7 @@ export async function getAllFacilities() {
   const q = query(collection(db, COL), orderBy("displayOrder", "asc"));
   try {
     const snap = await getDocsWithTimeout(q);
-    return snap.empty ? DEFAULT_FACILITIES : snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    return snap.empty ? DEFAULT_FACILITIES : canonicalizeFacilities(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
   } catch {
     return DEFAULT_FACILITIES;
   }
