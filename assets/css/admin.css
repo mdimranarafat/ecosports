@@ -4,6 +4,7 @@
    ============================================================================ */
 
 .es-admin-shell { display: grid; grid-template-columns: 240px 1fr; min-height: 100vh; }
+.es-sidebar-backdrop { display: none; }
 
 /* Sidebar ------------------------------------------------------------------ */
 
@@ -44,7 +45,7 @@
 
 /* Main area ----------------------------------------------------------------- */
 
-.es-main { padding: var(--es-space-4) var(--es-space-5) var(--es-space-6); max-width: 1440px; }
+.es-main { min-width: 0; width: 100%; padding: var(--es-space-4) var(--es-space-5) var(--es-space-6); max-width: 1440px; }
 
 .es-topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--es-space-5); flex-wrap: wrap; gap: var(--es-space-3); }
 .es-topbar__title { margin: 0; font-size: 1.6rem; }

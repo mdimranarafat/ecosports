@@ -103,10 +103,8 @@ function renderShell(activePage, profile) {
       </div>
     </aside>
     <main class="es-main">
-      <div class="es-topbar">
-        <button class="es-menu-toggle" id="es-menu-toggle">&#9776;</button>
-        <div id="es-admin-body-slot"></div>
-      </div>
+      <button class="es-menu-toggle" id="es-menu-toggle">&#9776;</button>
+      <div id="es-admin-body-slot"></div>
     </main>`;
 
   document.getElementById("es-admin-body-slot").innerHTML = bodyHTML;
