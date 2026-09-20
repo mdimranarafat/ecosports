@@ -83,28 +83,30 @@ export async function createBooking(input) {
 
   const bookingsCol = collection(db, "bookings");
 
-  const result = await runTransaction(db, async (tx) => {
-    // Read every active booking for this facility+date inside the
-    // transaction so Firestore tracks it as part of the read-set — if
-    // another transaction commits a conflicting booking first, this
-    // transaction's read-set becomes stale and Firestore automatically
-    // retries it, guaranteeing serializable conflict detection.
-    const q = query(
-      collection(db, "bookingSlots"),
-      where("facilityId", "==", input.facilityId),
-      where("date", "==", input.date),
-      where("status", "==", "active")
-    );
-    const existingSnap = await tx.get(q);
+  // The Web SDK transaction API accepts DocumentReference in tx.get(), not a
+  // Query. Fetch candidate public slots first, then re-read each candidate
+  // document inside the transaction so the conflict check participates in the
+  // transaction read set without triggering the `.path` TypeError.
+  const slotQuery = query(
+    collection(db, "bookingSlots"),
+    where("facilityId", "==", input.facilityId),
+    where("date", "==", input.date),
+    where("status", "==", "active")
+  );
+  const candidateSlots = await getDocs(slotQuery);
+  const candidateRefs = candidateSlots.docs.map((slotDoc) => slotDoc.ref);
 
-    for (const docSnap of existingSnap.docs) {
-      const b = docSnap.data();
+  const result = await runTransaction(db, async (tx) => {
+    const existingDocs = await Promise.all(candidateRefs.map((slotRef) => tx.get(slotRef)));
+    const existingBookings = existingDocs.filter((slotDoc) => slotDoc.exists()).map((slotDoc) => slotDoc.data());
+
+    for (const b of existingBookings) {
       if (rangesOverlap(input.startMinutes, endMinutes, b.startMinutes, b.endMinutes)) {
         throw new SlotConflictError();
       }
     }
 
-    const bookingId = `${generateBookingId(input.date, existingSnap.size + 1)}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
+    const bookingId = `${generateBookingId(input.date, existingBookings.length + 1)}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
     const ref = doc(db, "bookings", bookingId);
 
     // Re-check the exact doc id isn't already taken (extremely unlikely
