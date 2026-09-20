@@ -46,6 +46,9 @@ function validateBookingInput(input) {
   }
   if (input.durationMinutes <= 0) throw new ValidationError("Duration must be greater than zero.");
   if (input.startMinutes < 0) throw new ValidationError("Invalid start time.");
+  if (!Number.isInteger(input.startMinutes) || input.startMinutes % 30 !== 0) {
+    throw new ValidationError("Bookings must start on the hour or half-hour (for example, 5:00 AM or 5:30 AM).");
+  }
 }
 
 /**

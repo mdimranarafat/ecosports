@@ -49,7 +49,9 @@ export async function buildSlotGrid(facility, dateISO, durationMinutes) {
   let close = timeStrToMinutes(facility.closingTime);
   if (facility.allowOvernight && close <= open) close += 1440; // crosses midnight
 
-  const interval = facility.slotIntervalMinutes || 30;
+  // Eco Sports booking times are always half-hour slots: 5:00, 5:30, 6:00…
+  // Ignore legacy facility documents that still contain 10/15-minute values.
+  const interval = 30;
   const now = new Date();
   const currentMinutes = now.getHours() * 60 + now.getMinutes();
   const isToday = dateISO === todayISO();
