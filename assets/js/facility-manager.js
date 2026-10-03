@@ -45,12 +45,20 @@ function facilityKind(value = "") {
 }
 
 function canonicalizeFacilities(docs) {
-  return DEFAULT_FACILITIES.map((fallback) => {
+  const matchedIds = new Set();
+  const canonical = DEFAULT_FACILITIES.map((fallback) => {
     const match = docs.find((f) => f.id === fallback.id || facilityKind(f.id) === fallback.id || facilityKind(f.slug) === fallback.id || facilityKind(f.name) === fallback.id);
     // Keep the canonical ID even when Firestore contains a legacy document ID.
     // Pricing rules, booking slots, and bookings all use this stable ID.
+    if (match) matchedIds.add(match.id);
     return match ? { ...fallback, ...match, id: fallback.id, name: fallback.name, slug: fallback.slug, icon: fallback.icon, displayOrder: fallback.displayOrder, slotIntervalMinutes: 30 } : fallback;
   });
+  // Do not silently discard facilities created from the admin panel.
+  const custom = docs
+    .filter((f) => !matchedIds.has(f.id))
+    .map((f) => ({ ...f, slotIntervalMinutes: 30 }))
+    .sort((a, b) => (a.displayOrder ?? 999) - (b.displayOrder ?? 999));
+  return [...canonical, ...custom];
 }
 
 /** Public-facing: only active facilities, in admin-configured display order. */

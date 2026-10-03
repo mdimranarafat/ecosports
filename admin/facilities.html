@@ -62,7 +62,9 @@
   import { initAdminLayout, showToast } from "../assets/js/admin-layout.js";
   import { getAllFacilities, createFacility, updateFacility, setFacilityActive } from "../assets/js/facility-manager.js?v=57f7669";
 
-  const { user } = await initAdminLayout({ activePage: "facilities", permission: "facilities.view" });
+  const { user, profile } = await initAdminLayout({ activePage: "facilities", permission: "facilities.view" });
+  const canEdit = profile.role === "super_admin" || profile.permissions?.["facilities.edit"] === true;
+  if (!canEdit) document.getElementById("new-btn").style.display = "none";
 
   let facilities = [];
 
@@ -127,6 +129,7 @@
 
   document.getElementById("f-save").addEventListener("click", async () => {
     const errorEl = document.getElementById("modal-error");
+    if (!canEdit) { errorEl.textContent = "You do not have permission to edit facilities."; errorEl.style.display = "block"; return; }
     const name = document.getElementById("f-name").value.trim();
     if (!name) { errorEl.textContent = "Facility name is required."; errorEl.style.display = "block"; return; }
 
